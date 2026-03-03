@@ -19,7 +19,7 @@ import java.util.Arrays;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-    
+
     private final JwtAuthenticationFilter jwtAuthFilter;
 
     public SecurityConfig (JwtAuthenticationFilter jwtAuthFilter) {
@@ -29,28 +29,39 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Enable CORS
-            .csrf(AbstractHttpConfigurer::disable) // Disable CSRF for simplicity, but consider enabling it in production
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // We want stateless sessions since we're using JWTs
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/register", "/api/auth/login", "/error", "/uploads/**").permitAll() // Allow unauthenticated access to auth and uploads endpoints
-                .anyRequest().authenticated() // Require authentication for all other endpoints
-            )
-            // Telling Spring to check our JWT filter BEFORE the standard username/password authentication filter, so that we can set the security context based on the JWT
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // 1. Разрешаем эндпоинты авторизации и системные ошибки
+                        .requestMatchers("/api/auth/**", "/error").permitAll()
+
+                        // 2. Разрешаем загрузки (если нужно отдавать их публично)
+                        .requestMatchers("/uploads/**").permitAll()
+
+                        // 3. ЗАЩИЩАЕМ все остальные методы API
+                        // (Предполагается, что весь ваш бэкенд находится под префиксом /api/)
+                        .requestMatchers("/api/**").authenticated()
+
+                        // 4. РАЗРЕШАЕМ ВСЁ ОСТАЛЬНОЕ
+                        // Это пропустит статику (JS, CSS) и запросы React Router (например, /profile)
+                        // дальше в Spring MVC, не требуя JWT-токена.
+                        .anyRequest().permitAll()
+                )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); // Use BCrypt for password hashing
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://127.0.0.1:5173"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8080", "http://127.0.0.1:8080"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token"));
         configuration.setExposedHeaders(Arrays.asList("x-auth-token"));

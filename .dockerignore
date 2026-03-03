@@ -1,0 +1,40 @@
+# =========================
+# Системные файлы и IDE
+# =========================
+.git
+.gitignore
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# =========================
+# Frontend (Vite & Node.js)
+# =========================
+# Игнорируем локальные зависимости (они скачаются заново через npm ci)
+frontend/node_modules/
+
+# Игнорируем локальные билды (мы делаем билд внутри Docker)
+frontend/dist/
+frontend/dist-ssr/
+
+# Игнорируем логи и локальные переменные окружения (секреты не должны попасть в образ)
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.env.local
+frontend/.env.*.local
+
+# =========================
+# Backend (Spring Boot)
+# =========================
+# Игнорируем локальные скомпилированные классы и JAR-файлы
+backend/target/
+
+# Логи бэкенда
+backend/*.log
