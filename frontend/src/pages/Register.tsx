@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { normalizeHandle } from '../utils/handle';
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -12,7 +13,7 @@ const Register: React.FC = () => {
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      await api.post('/auth/register', { email, name, password });
+            await api.post('/auth/register', { email, name: normalizeHandle(name), password });
       // On success, redirect to login
       navigate('/login');
     } catch (err: any) {
@@ -20,56 +21,82 @@ const Register: React.FC = () => {
     }
   };
 
-  return (
-    <div className="flex items-center justify-center h-screen bg-transparent">
-      <div className="cyber-panel p-8 w-full max-w-md">
-        <h2 className="text-3xl mb-6 text-center text-cyan-400 drop-shadow-[0_0_8px_rgba(0,255,204,0.8)]">NEW_ENTITY_SETUP</h2>
-        
-        {error && <div className="text-red-500 mb-4 text-center">[{error}]</div>}
-        
-        <form onSubmit={handleRegister} className="space-y-4">
-          <div>
-            <label className="block text-sm mb-1 text-cyan-500">PROXY_ALIAS (NAME)</label>
-            <input 
-              type="text" 
-              className="cyber-input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1 text-cyan-500">CONTACT_NODE (EMAIL)</label>
-            <input 
-              type="email" 
-              className="cyber-input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1 text-cyan-500">SECURITY_KEY (PASSWORD)</label>
-            <input 
-              type="password" 
-              className="cyber-input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          <button type="submit" className="cyber-button w-full py-3 mt-4 font-bold tracking-widest hover:text-white">
-            Execute Inject
-          </button>
-        </form>
-        
-        <div className="mt-6 text-center">
-          <p className="text-sm">ALREADY_REGISTERED?</p>
-          <a href="/login" className="text-fuchsia-500 hover:text-fuchsia-300 underline underline-offset-4">RETURN_TO_LOGIN</a>
+    return (
+        <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 relative overflow-hidden">
+             {/* Background Effects */}
+             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[100px]"></div>
+                <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/10 rounded-full blur-[100px]"></div>
+            </div>
+
+            <div className="glass-panel max-w-md w-full p-8 rounded-3xl border border-white/5 relative z-10 shadow-2xl shadow-emerald-500/5">
+                <div className="text-center mb-8">
+                    <h1 className="text-3xl font-black text-white tracking-tight mb-2">Create Account.</h1>
+                    <p className="text-zinc-500 text-sm">Join the network and start connecting.</p>
+                </div>
+
+                {error && (
+                    <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 px-4 py-3 rounded-xl text-sm mb-6 text-center">
+                        {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleRegister} className="space-y-4">
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Handle</label>
+                        <input
+                            type="text"
+                            placeholder="your_handle"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono text-sm"
+                            required
+                        />
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Email</label>
+                        <input
+                            type="email"
+                            placeholder="name@company.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono text-sm"
+                            required
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Password</label>
+                        <input
+                            type="password"
+                            placeholder="Minimum 8 characters"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono text-sm"
+                            required
+                        />
+                    </div>
+
+                    <div className="pt-2">
+                        <button
+                            type="submit"
+                            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/40 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Create Account
+                        </button>
+                    </div>
+
+                    <div className="mt-8 text-center text-zinc-500 text-sm">
+                        Already registered?{' '}
+                        <button type="button" onClick={() => navigate('/login')} className="text-indigo-400 font-medium hover:text-indigo-300 transition-colors">
+                            Sign in
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default Register;

@@ -1,4 +1,4 @@
-# Match-Me Web & GraphQL
+# CodeMeet Web & GraphQL
 
 Create a full-stack recommendation application, to connect users based on their profile information.
 
@@ -95,8 +95,8 @@ You must implement the following RESTful endpoints. None of them must return aut
 
 ---
 
-## Part 2: Match-Me GraphQL
-Implement a GraphQL API to more efficiently serve data for your match-me project.
+## Part 2: CodeMeet GraphQL
+Implement a GraphQL API to more efficiently serve data for your CodeMeet project.
 
 ### GraphQL API
 - Expose your full server functionality via GraphQL to minimize queries and payload size.

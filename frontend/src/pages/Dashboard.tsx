@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { IconCamera, IconCode, IconChart, IconTarget, IconLaptop, IconMapPin, IconWarning, IconSearch, IconNetwork, IconMessage, IconCheck, IconUser, IconMore } from '../components/Icons';
+import { toHandle } from '../utils/handle';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '');
 
 type Bio = {
     primaryLanguage?: string;
@@ -16,6 +21,8 @@ const Dashboard: React.FC = () => {
     const [bio, setBio] = useState<Bio | null>(null);
     const [uploading, setUploading] = useState(false);
     const [uploadMessage, setUploadMessage] = useState('');
+    const [aliasInput, setAliasInput] = useState('');
+    const [aliasMessage, setAliasMessage] = useState('');
     const navigate = useNavigate();
 
     const calculateCompletion = (bioData: Bio | null): number => {
@@ -46,6 +53,7 @@ const Dashboard: React.FC = () => {
             try {
                 const userRes = await api.get('/me');
                 setUser(userRes.data);
+                setAliasInput(userRes.data?.name || '');
                 
                 try {
                     const bioRes = await api.get('/me/bio');
@@ -61,9 +69,22 @@ const Dashboard: React.FC = () => {
         fetchData();
     }, [navigate]);
 
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        navigate('/login');
+    const handleAliasUpdate = async () => {
+        const trimmed = aliasInput.trim();
+        if (!trimmed) {
+            setAliasMessage('ALIAS_CANNOT_BE_EMPTY');
+            return;
+        }
+
+        try {
+            await api.post('/me/alias', { name: trimmed });
+            const userRes = await api.get('/me');
+            setUser(userRes.data);
+            setAliasInput(userRes.data?.name || trimmed);
+            setAliasMessage('ALIAS_UPDATED');
+        } catch (err: any) {
+            setAliasMessage('ALIAS_UPDATE_FAILED');
+        }
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,119 +114,181 @@ const Dashboard: React.FC = () => {
         }
     };
 
-    if (!user) return <div className="p-8 text-center text-cyan-400">LOADING_MAINFRAME...</div>;
+    if (!user) return (
+        <div className="flex items-center justify-center h-full text-zinc-500 font-medium animate-pulse">
+            LOADING PROFILE DATA...
+        </div>
+    );
 
     return (
-        <div className="p-8 max-w-4xl mx-auto mt-10">
-             <div className="flex justify-between items-center mb-8 border-b border-fuchsia-500 pb-4">
-                <h1 className="text-4xl text-cyan-400 drop-shadow-[0_0_8px_rgba(0,255,204,0.8)]">NEURAL_DASHBOARD</h1>
-                <button onClick={handleLogout} className="text-red-500 border border-red-500 px-4 py-2 hover:bg-red-500 hover:text-white transition-colors">
-                    TERMINATE_LINK
-                </button>
+        <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
+             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                   <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-zinc-100 to-zinc-400">
+                      Welcome back, {user.name}
+                   </h1>
+                   <p className="text-zinc-500 mt-1">Here is your digital footprint overview.</p>
+                </div>
              </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div className="cyber-panel p-6">
-                    <h2 className="text-2xl text-fuchsia-400 mb-4">ENTITY_STATUS</h2>
-                    <div className="flex items-start gap-6">
-                        <div className="flex-shrink-0 flex flex-col items-center">
-                            <div className="w-24 h-24 border-2 border-cyan-500 overflow-hidden bg-gray-900 flex items-center justify-center text-3xl">
-                                {user.profilePicture ? (
-                                    <img src={`http://localhost:8080${user.profilePicture}`} alt="Avatar" className="w-full h-full object-cover" />
-                                ) : (
-                                    <span>👤</span>
-                                )}
-                            </div>
-                            <label className="mt-3 cursor-pointer text-xs text-cyan-400 hover:text-cyan-300 border border-cyan-500/50 px-2 py-1 bg-cyan-900/20">
-                                {uploading ? 'UPLOADING...' : 'UPLOAD_AVATAR'}
-                                <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={uploading} />
-                            </label>
-                        </div>
-                        <div className="space-y-3 font-mono text-sm leading-relaxed flex-1">
-                            <p><span className="text-cyan-600">ID:</span> {user.id}</p>
-                            <p><span className="text-cyan-600">ALIAS:</span> {user.name}</p>
-                            <p><span className="text-cyan-600">NODE:</span> {user.email}</p>
-                            {uploadMessage && (
-                                <p className={`mt-2 ${uploadMessage.includes('SUCCESS') ? 'text-green-400' : 'text-red-500'}`}>
-                                    [{uploadMessage}]
-                                </p>
-                            )}
-                        </div>
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                 {/* Identity Card */}
+                 <div className="cyber-card p-8 lg:col-span-1 flex flex-col items-center text-center relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button className="text-zinc-500 hover:text-indigo-400" aria-label="Profile options">
+                            <IconMore className="w-5 h-5" />
+                        </button>
                     </div>
                     
-                    <div className="mt-8 border-t border-fuchsia-500/30 pt-6">
-                        <h3 className="text-lg text-fuchsia-300 mb-4">SYSTEM_NAVIGATION</h3>
-                        <div className="grid grid-cols-1 gap-3">
-                            <button onClick={() => navigate('/matches')} className="cyber-button w-full py-3 text-left pl-4 hover:pl-6 transition-all">
-                                [01] FIND_MATCHES (RECOMMENDATION_ENGINE)
-                            </button>
-                            <button onClick={() => navigate('/connections')} className="cyber-button w-full py-3 text-left pl-4 hover:pl-6 transition-all">
-                                [02] MANAGE_CONNECTIONS
-                            </button>
-                            <button onClick={() => navigate('/chat')} className="cyber-button w-full py-3 text-left pl-4 hover:pl-6 transition-all">
-                                [03] ENCRYPTED_COMMUNICATIONS (CHAT)
-                            </button>
-                            <button onClick={() => navigate('/setup-bio')} className="text-cyan-500 border border-cyan-900 bg-black/40 w-full py-2 text-left pl-4 hover:bg-cyan-900/30 transition-all font-mono text-sm mt-4">
-                                // UPDATE_BIO_PARAMETERS
-                            </button>
+                    <div className="relative mb-6">
+                        <div className="w-32 h-32 rounded-full border-4 border-zinc-800 bg-zinc-900 overflow-hidden shadow-2xl relative z-10 box-border">
+                            {user.profilePicture ? (
+                                <img src={`${BACKEND_BASE_URL}${user.profilePicture}`} alt="Avatar" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-600">
+                                   <IconUser className="w-16 h-16"/>
+                                </div>
+                            )}
                         </div>
+                        <div className="absolute inset-0 rounded-full border border-indigo-500/30 scale-110 animate-pulse pointer-events-none"></div>
+                        
+                        <label className="absolute bottom-0 right-0 bg-zinc-800 text-white p-2 rounded-full cursor-pointer hover:bg-indigo-600 transition-colors shadow-lg border border-zinc-700 z-20">
+                            <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={uploading} />
+                            <span className="text-xs font-bold">{uploading ? '...' : <IconCamera className="w-4 h-4" />}</span>
+                        </label>
+                    </div>
+                    
+                    <h2 className="text-xl font-bold text-zinc-100">{user.name}</h2>
+                    <p className="text-indigo-400 text-sm font-medium mb-6">{toHandle(user.name)}</p>
+                    
+                    <div className="w-full space-y-4">
+                        <div className="bg-zinc-900/50 rounded-xl p-1 flex items-center border border-zinc-800 focus-within:border-indigo-500/50 transition-colors">
+                           <input
+                               className="bg-transparent w-full px-4 py-2 text-sm text-center text-zinc-300 placeholder-zinc-600 focus:outline-none"
+                               value={aliasInput}
+                               onChange={(e) => setAliasInput(e.target.value)}
+                               maxLength={40}
+                               placeholder="Update alias..."
+                           />
+                           <button
+                               type="button"
+                               onClick={handleAliasUpdate}
+                               className="bg-zinc-800 hover:bg-indigo-600 text-zinc-400 hover:text-white rounded-lg p-2 transition-colors flex items-center justify-center"
+                           >
+                               <IconCheck className="w-4 h-4" />
+                           </button>
+                        </div>
+                        
+                        {(aliasMessage || uploadMessage) && (
+                           <div className="text-xs font-medium text-emerald-400 bg-emerald-400/10 py-2 rounded-lg border border-emerald-400/20">
+                              {aliasMessage || uploadMessage}
+                           </div>
+                        )}
                     </div>
                  </div>
 
-                 <div className="cyber-panel p-6">
-                    <h2 className="text-2xl text-fuchsia-400 mb-4">BIO_METRICS</h2>
+                 {/* Bio & Stats */}
+                 <div className="cyber-card p-8 lg:col-span-2 flex flex-col justify-between relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                    
+                    <div className="flex justify-between items-start mb-6 z-10">
+                        <div>
+                           <h2 className="text-lg font-bold text-zinc-200">Bio Metrics</h2>
+                           <p className="text-zinc-500 text-sm">Profile completion status</p>
+                        </div>
+                        <button 
+                           onClick={() => navigate('/setup-bio')}
+                           className="text-xs font-medium px-3 py-1 rounded-full bg-zinc-800 text-zinc-400 hover:text-indigo-400 border border-zinc-700 hover:border-indigo-500/30 transition-all"
+                        >
+                           Edit Bio
+                        </button>
+                    </div>
+
                     {bio ? (
-                         <div>
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="relative" aria-label={`Bio completion ${completion}%`}>
-                                    <svg width={ringSize} height={ringSize} className="-rotate-90">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 z-10">
+                            <div className="flex flex-col items-center justify-center p-6 bg-zinc-900/30 rounded-2xl border border-white/5">
+                                <div className="relative w-40 h-40">
+                                    <svg className="w-full h-full -rotate-90" viewBox={`0 0 ${ringSize} ${ringSize}`}>
                                         <circle
                                             cx={ringSize / 2}
                                             cy={ringSize / 2}
                                             r={radius}
-                                            stroke="rgba(255,255,255,0.15)"
-                                            strokeWidth={stroke}
                                             fill="transparent"
+                                            stroke="#27272a"
+                                            strokeWidth={stroke}
                                         />
                                         <circle
                                             cx={ringSize / 2}
                                             cy={ringSize / 2}
                                             r={radius}
-                                            stroke="#ff00ff"
+                                            fill="transparent"
+                                            stroke="url(#gradient)"
                                             strokeWidth={stroke}
                                             strokeLinecap="round"
-                                            fill="transparent"
                                             strokeDasharray={circumference}
                                             strokeDashoffset={dashOffset}
-                                            style={{ transition: 'stroke-dashoffset 0.35s ease' }}
+                                            className="transition-all duration-1000 ease-out"
                                         />
+                                        <defs>
+                                           <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                              <stop offset="0%" stopColor="#6366f1" />
+                                              <stop offset="100%" stopColor="#a855f7" />
+                                           </linearGradient>
+                                        </defs>
                                     </svg>
-                                    <div className="absolute inset-0 flex items-center justify-center text-fuchsia-300 font-bold text-sm">
-                                        {completion}%
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span className="text-3xl font-bold text-white">{completion}%</span>
+                                        <span className="text-xs text-zinc-500 uppercase tracking-widest">Complete</span>
                                     </div>
-                                </div>
-                                <div className="font-mono text-sm">
-                                    <p className="text-cyan-500">BIO_COMPLETION</p>
                                 </div>
                             </div>
 
-                            <div className="space-y-3 font-mono text-sm leading-relaxed">
-                                <p><span className="text-cyan-600">PRIMARY_STACK:</span> {bio.primaryLanguage || 'UNKNOWN'}</p>
-                                <p><span className="text-cyan-600">LEVEL:</span> {bio.experienceLevel || 'UNKNOWN'}</p>
-                                <p><span className="text-cyan-600">TARGET:</span> {bio.lookFor || 'UNKNOWN'}</p>
-                                <p><span className="text-cyan-600">OS_CORE:</span> {bio.preferredOs || 'UNKNOWN'}</p>
-                                <p><span className="text-cyan-600">STYLE:</span> {bio.codingStyle || 'UNKNOWN'}</p>
-                                <p><span className="text-cyan-600">CITY:</span> {bio.city || 'UNKNOWN'}</p>
+                            <div className="grid grid-cols-1 gap-3">
+                                {[
+                                   { label: 'Primary Stack', value: bio.primaryLanguage, icon: <IconCode className="w-4 h-4" /> },
+                                   { label: 'Level', value: bio.experienceLevel, icon: <IconChart className="w-4 h-4" /> },
+                                   { label: 'Looking For', value: bio.lookFor, icon: <IconTarget className="w-4 h-4" /> },
+                                   { label: 'OS', value: bio.preferredOs, icon: <IconLaptop className="w-4 h-4" /> },
+                                   { label: 'Location', value: bio.city, icon: <IconMapPin className="w-4 h-4" /> },
+                                ].map((item, i) => (
+                                   <div key={i} className="flex justify-between items-center p-3 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700 transition-colors">
+                                      <span className="text-zinc-500 text-sm flex items-center gap-2">{item.icon} {item.label}</span>
+                                      <span className="text-zinc-200 font-medium text-sm">{item.value || '—'}</span>
+                                   </div>
+                                ))}
                             </div>
-                         </div>
+                        </div>
                     ) : (
-                        <div className="text-yellow-500">
-                            WARNING: BIO_DATA MISSING. RECOMMENDATIONS INACTIVE.
-                            <button className="cyber-button w-full py-2 mt-4 text-sm" onClick={() => navigate('/setup-bio')}>
-                                INITIALIZE_BIO
+                        <div className="flex-1 flex flex-col items-center justify-center bg-zinc-900/30 rounded-2xl border border-white/5 border-dashed p-8">
+                            <div className="text-4xl mb-4 opacity-50 flex items-center justify-center"><IconWarning className="w-12 h-12 text-zinc-600" /></div>
+                            <h3 className="text-zinc-300 font-medium mb-2">Profile Incomplete</h3>
+                            <p className="text-zinc-500 text-sm text-center mb-6 max-w-xs">
+                                Complete your bio to unlock recommendations and start connecting with others.
+                            </p>
+                            <button className="btn-primary" onClick={() => navigate('/setup-bio')}>
+                                Initialize Bio Profile
                             </button>
                         </div>
                     )}
+                 </div>
+             </div>
+
+             {/* Quick Actions Grid */}
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div onClick={() => navigate('/matches')} className="cyber-card p-6 cursor-pointer group hover:bg-indigo-900/10">
+                    <div className="w-12 h-12 rounded-xl bg-zinc-800 text-2xl flex items-center justify-center mb-4 text-indigo-400 group-hover:scale-110 transition-transform"><IconSearch className="w-6 h-6" /></div>
+                    <h3 className="text-lg font-bold text-zinc-200 mb-2">Discover Matches</h3>
+                    <p className="text-zinc-500 text-sm">Find new connections suitable for your profile.</p>
+                 </div>
+                 <div onClick={() => navigate('/connections')} className="cyber-card p-6 cursor-pointer group hover:bg-indigo-900/10">
+                    <div className="w-12 h-12 rounded-xl bg-zinc-800 text-2xl flex items-center justify-center mb-4 text-purple-400 group-hover:scale-110 transition-transform"><IconNetwork className="w-6 h-6" /></div>
+                    <h3 className="text-lg font-bold text-zinc-200 mb-2">My Network</h3>
+                    <p className="text-zinc-500 text-sm">Manage pending requests and active connections.</p>
+                 </div>
+                 <div onClick={() => navigate('/chat')} className="cyber-card p-6 cursor-pointer group hover:bg-indigo-900/10">
+                    <div className="w-12 h-12 rounded-xl bg-zinc-800 text-2xl flex items-center justify-center mb-4 text-emerald-400 group-hover:scale-110 transition-transform"><IconMessage className="w-6 h-6" /></div>
+                    <h3 className="text-lg font-bold text-zinc-200 mb-2">Comms Channels</h3>
+                    <p className="text-zinc-500 text-sm">Encrypted secure messaging with your network.</p>
                  </div>
              </div>
         </div>

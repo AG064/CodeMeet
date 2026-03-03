@@ -10,11 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@stomp/stompjs": "^7.3.0",
     "@tailwindcss/vite": "^4.2.1",
     "axios": "^1.13.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",
+    "sockjs-client": "^1.6.1",
     "tailwindcss": "^4.2.1"
   },
   "devDependencies": {
@@ -22,6 +24,7 @@
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/sockjs-client": "^1.5.4",
     "@vitejs/plugin-react": "^5.1.1",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",

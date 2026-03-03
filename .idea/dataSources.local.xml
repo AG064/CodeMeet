@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="dataSourceStorageLocal" created-in="IU-253.31033.145">
+    <data-source name="matchme@database" uuid="36229ca0-0989-43e0-8db2-e052dcdaee10">
+      <database-info product="" version="" jdbc-version="" driver-name="" driver-version="" dbms="POSTGRES" />
+      <schema-mapping />
+    </data-source>
+    <data-source name="matchme@localhost" uuid="1c7433dd-7963-46bc-83cf-60a5a2ac733e">
+      <database-info product="" version="" jdbc-version="" driver-name="" driver-version="" dbms="POSTGRES" />
+      <schema-mapping />
+    </data-source>
+  </component>
+</project>

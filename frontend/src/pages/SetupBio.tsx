@@ -22,11 +22,11 @@ const defaultBio: BioForm = {
   city: '',
 };
 
-const primaryLanguageOptions = ['TypeScript', 'JavaScript', 'Java', 'Python', 'C#', 'Go', 'Rust', 'Kotlin'];
-const experienceLevelOptions = ['Beginner', 'Junior', 'Mid', 'Senior', 'Lead'];
-const lookForOptions = ['Pair Programming', 'Hackathon Teammate', 'Long-term Project', 'Mentor', 'Mentee', 'Code Review Partner'];
-const preferredOsOptions = ['Windows', 'Linux', 'macOS', 'WSL'];
-const codingStyleOptions = ['Clean Code', 'Pragmatic', 'TDD', 'Fast Prototyping', 'Architecture-first', 'Functional'];
+const primaryLanguageOptions = ['TypeScript', 'JavaScript', 'Java', 'Python', 'C#', 'Go', 'Rust', 'Kotlin', 'Swift', 'PHP'];
+const experienceLevelOptions = ['Beginner', 'Junior', 'Mid', 'Senior', 'Lead', 'Principal'];
+const lookForOptions = ['Pair Programming', 'Hackathon Teammate', 'Long-term Project', 'Mentor', 'Mentee', 'Code Review Partner', 'Co-Founder'];
+const preferredOsOptions = ['Windows', 'Linux', 'macOS', 'WSL', 'Unix'];
+const codingStyleOptions = ['Clean Code', 'Pragmatic', 'TDD', 'Fast Prototyping', 'Architecture-first', 'Functional', 'OOP'];
 
 const splitCsv = (value: string): string[] =>
   value
@@ -52,8 +52,8 @@ const SetupBio: React.FC = () => {
   const [success, setSuccess] = useState('');
 
   const completion = calculateCompletion(form);
-  const ringSize = 120;
-  const stroke = 10;
+  const ringSize = 100;
+  const stroke = 8;
   const radius = (ringSize - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference * (1 - completion / 100);
@@ -91,48 +91,50 @@ const SetupBio: React.FC = () => {
     setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
-  const onMultiSelectChange = (field: keyof BioForm, selectedOptions: HTMLOptionsCollection) => {
-    const values = Array.from(selectedOptions)
-      .filter((option) => option.selected)
-      .map((option) => option.value);
-
-    onChange(field, toCsv(values));
+  const onSelectOption = (field: keyof BioForm, option: string) => {
+    const current = splitCsv(form[field]);
+    let next: string[];
+    
+    // Single select for experience level
+    if (field === 'experienceLevel') {
+        next = [option];
+    } else {
+        // Multi select for others
+        if (current.includes(option)) {
+            next = current.filter(i => i !== option);
+        } else {
+            if (current.length >= 3) return; // Max 3
+            next = [...current, option];
+        }
+    }
+    
+    onChange(field, toCsv(next));
   };
 
   const validateField = (field: keyof BioForm, value: string): string => {
     const trimmed = value.trim();
 
     if (!trimmed) {
-      return 'This field is required.';
+      return 'Required';
     }
 
     if (field === 'experienceLevel') {
       if (!experienceLevelOptions.includes(trimmed)) {
-        return 'Select a valid experience level.';
+        return 'Invalid selection';
       }
       return '';
     }
 
     if (field === 'city') {
-      if (trimmed.length < 2) {
-        return 'City must be at least 2 characters.';
-      }
-      if (trimmed.length > 40) {
-        return 'City must be at most 40 characters.';
-      }
-      if (!/^[a-zA-ZÀ-ž\s'-]+$/.test(trimmed)) {
-        return 'City can only contain letters, spaces, apostrophes, and hyphens.';
-      }
+      if (trimmed.length < 2) return 'Too short';
+      if (trimmed.length > 40) return 'Too long';
+      if (!/^[a-zA-ZÀ-ž\s'-]+$/.test(trimmed)) return 'Invalid characters';
       return '';
     }
 
     const selectedCount = splitCsv(trimmed).length;
-    if (selectedCount === 0) {
-      return 'Please select at least one option.';
-    }
-    if (selectedCount > 3) {
-      return 'Please choose up to 3 options.';
-    }
+    if (selectedCount === 0) return 'Select at least one';
+    if (selectedCount > 3) return 'Max 3 choices';
 
     return '';
   };
@@ -156,7 +158,7 @@ const SetupBio: React.FC = () => {
     e.preventDefault();
 
     if (!validateForm()) {
-      setError('Please correct the highlighted fields before saving.');
+      setError('Check fields');
       setSuccess('');
       return;
     }
@@ -167,7 +169,7 @@ const SetupBio: React.FC = () => {
 
     try {
       await api.post('/me/bio', form);
-      setSuccess('BIO_SYNC_COMPLETE. Redirecting to dashboard...');
+      setSuccess('Profile updated successfully');
       setTimeout(() => navigate('/dashboard'), 800);
     } catch (err: any) {
       if (err?.response?.status === 401 || err?.response?.status === 403) {
@@ -175,171 +177,176 @@ const SetupBio: React.FC = () => {
         navigate('/login');
         return;
       }
-
       const backendMessage = typeof err?.response?.data === 'string'
         ? err.response.data
         : err?.response?.data?.message;
-
-      setError(backendMessage || 'Failed to save bio');
+      setError(backendMessage || 'Failed to save');
     } finally {
       setSaving(false);
     }
   };
 
+  const renderMultiSelect = (field: keyof BioForm, options: string[], label: string) => {
+    const selected = splitCsv(form[field]);
+    const hasError = !!errors[field];
+
+    return (
+        <div className="space-y-2">
+            <div className="flex justify-between items-center">
+                <label className="text-xs uppercase tracking-wider text-zinc-500 font-bold">{label}</label>
+                {hasError && <span className="text-rose-500 text-xs">{errors[field]}</span>}
+            </div>
+            <div className="flex flex-wrap gap-2">
+                {options.map(opt => {
+                    const isActive = selected.includes(opt);
+                    return (
+                        <button
+                            key={opt}
+                            type="button"
+                            onClick={() => onSelectOption(field, opt)}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                                isActive 
+                                    ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300 shadow-sm' 
+                                    : 'bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                            }`}
+                        >
+                            {opt}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+  };
+
   if (loading) {
-    return <div className="p-8 text-center text-cyan-400">BOOTSTRAPPING_BIO_MODULE...</div>;
+    return (
+        <div className="flex items-center justify-center h-full text-zinc-500 font-medium animate-pulse">
+            LOADING CONFIGURATION...
+        </div>
+    );
   }
 
   return (
-    <div className="p-8 max-w-3xl mx-auto mt-10">
-      <div className="flex justify-between items-center mb-8 border-b border-fuchsia-500 pb-4">
-        <h1 className="text-3xl text-cyan-400 drop-shadow-[0_0_8px_rgba(0,255,204,0.8)]">SETUP_BIO_PROTOCOL</h1>
-        <button
-          type="button"
-          onClick={() => navigate('/dashboard')}
-          className="text-cyan-400 border border-cyan-500 px-4 py-2 hover:bg-cyan-500 hover:text-black transition-colors"
-        >
-          BACK_TO_DASH
-        </button>
-      </div>
-
-      <div className="cyber-panel p-5 mb-6 flex items-center gap-4">
-        <div className="relative" aria-label={`Bio completion ${completion}%`}>
-          <svg width={ringSize} height={ringSize} className="-rotate-90">
-            <circle
-              cx={ringSize / 2}
-              cy={ringSize / 2}
-              r={radius}
-              stroke="rgba(255,255,255,0.15)"
-              strokeWidth={stroke}
-              fill="transparent"
-            />
-            <circle
-              cx={ringSize / 2}
-              cy={ringSize / 2}
-              r={radius}
-              stroke="#00ffcc"
-              strokeWidth={stroke}
-              strokeLinecap="round"
-              fill="transparent"
-              strokeDasharray={circumference}
-              strokeDashoffset={dashOffset}
-              style={{ transition: 'stroke-dashoffset 0.35s ease' }}
-            />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center text-cyan-300 font-bold text-lg">
-            {completion}%
-          </div>
-        </div>
+    <div className="max-w-4xl mx-auto py-8 px-4 animate-fade-in">
+      <div className="flex justify-between items-end mb-8">
         <div>
-          <h2 className="text-xl text-fuchsia-400">BIO_COMPLETION</h2>
-          <p className="text-sm text-cyan-200">Complete all fields to unlock better recommendations.</p>
-          <p className="text-xs text-cyan-500 mt-1">Tip: Use Ctrl/Cmd + click to select multiple options.</p>
+           <h1 className="text-3xl font-bold text-zinc-100">Profile Setup</h1>
+           <p className="text-zinc-500 mt-1">Define your parameters to help us find compatible nodes.</p>
         </div>
       </div>
 
-      <div className="cyber-panel p-6">
-        {error && <div className="text-red-500 mb-4">[{error}]</div>}
-        {success && <div className="text-green-400 mb-4">{success}</div>}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column: Form */}
+          <div className="lg:col-span-2 space-y-6">
+              <div className="glass-panel p-6 rounded-2xl border border-white/5 relative overflow-hidden">
+                {error && <div className="absolute top-0 left-0 w-full bg-rose-500/20 text-rose-300 text-xs px-4 py-1 text-center">{error}</div>}
+                {success && <div className="absolute top-0 left-0 w-full bg-emerald-500/20 text-emerald-300 text-xs px-4 py-1 text-center">{success}</div>}
+                
+                <form onSubmit={handleSubmit} className="space-y-8 mt-2">
+                    {renderMultiSelect('primaryLanguage', primaryLanguageOptions, 'Primary Stack (Max 3)')}
+                    
+                    <div className="space-y-4">
+                        <div className="flex flex-col space-y-2">
+                             <label className="text-xs uppercase tracking-wider text-zinc-500 font-bold">Years of Experience</label>
+                             <div className="grid grid-cols-3 gap-2">
+                                {experienceLevelOptions.map(opt => (
+                                    <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => onSelectOption('experienceLevel', opt)}
+                                        className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
+                                            form.experienceLevel === opt
+                                                ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300' 
+                                                : 'bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                                        }`}
+                                    >
+                                        {opt}
+                                    </button>
+                                ))}
+                             </div>
+                        </div>
+                    </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label className="block text-sm mb-1 text-cyan-500">PRIMARY_LANGUAGE</label>
-            <select
-              className={`cyber-input h-32 ${errors.primaryLanguage ? 'border-red-500' : ''}`}
-              multiple
-              value={splitCsv(form.primaryLanguage)}
-              onChange={(e) => onMultiSelectChange('primaryLanguage', e.target.options)}
-            >
-              {primaryLanguageOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-            {errors.primaryLanguage && <p className="text-red-400 text-xs mt-1">{errors.primaryLanguage}</p>}
+                    <div className="space-y-2">
+                         <label className="text-xs uppercase tracking-wider text-zinc-500 font-bold">Operating Base (City)</label>
+                         <input
+                            value={form.city}
+                            onChange={(e) => onChange('city', e.target.value)}
+                            placeholder="e.g. San Francisco"
+                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-2.5 text-zinc-200 placeholder-zinc-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono text-sm"
+                         />
+                         {errors.city && <span className="text-rose-500 text-xs">{errors.city}</span>}
+                    </div>
+
+                    {renderMultiSelect('lookFor', lookForOptions, 'Looking For (Max 3)')}
+                    {renderMultiSelect('codingStyle', codingStyleOptions, 'Work Style (Max 3)')}
+                    {renderMultiSelect('preferredOs', preferredOsOptions, 'Preferred Environment (Max 3)')}
+
+                    <div className="pt-4 flex gap-4">
+                        <button
+                            type="button"
+                            onClick={() => navigate('/dashboard')}
+                            className="flex-1 py-3 text-sm font-medium text-zinc-400 hover:text-zinc-200"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="flex-[2] py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition-all font-medium disabled:opacity-50"
+                        >
+                            {saving ? 'Syncing...' : 'Save Configuration'}
+                        </button>
+                    </div>
+                </form>
+              </div>
           </div>
 
-          <div>
-            <label className="block text-sm mb-1 text-cyan-500">EXPERIENCE_LEVEL</label>
-            <select
-              className={`cyber-input ${errors.experienceLevel ? 'border-red-500' : ''}`}
-              value={form.experienceLevel}
-              onChange={(e) => onChange('experienceLevel', e.target.value)}
-            >
-              <option value="">Select level...</option>
-              {experienceLevelOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-            {errors.experienceLevel && <p className="text-red-400 text-xs mt-1">{errors.experienceLevel}</p>}
+          {/* Right Column: Status */}
+          <div className="lg:col-span-1">
+             <div className="glass-panel p-6 rounded-2xl border border-white/5 sticky top-6 text-center">
+                 <div className="relative inline-flex items-center justify-center p-4">
+                    <svg width={ringSize} height={ringSize} className="-rotate-90">
+                        <circle
+                            cx={ringSize / 2}
+                            cy={ringSize / 2}
+                            r={radius}
+                            stroke="#18181b" 
+                            strokeWidth={stroke}
+                            fill="transparent"
+                        />
+                        <circle
+                            cx={ringSize / 2}
+                            cy={ringSize / 2}
+                            r={radius}
+                            stroke={completion === 100 ? '#10b981' : '#6366f1'}
+                            strokeWidth={stroke}
+                            strokeLinecap="round"
+                            fill="transparent"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={dashOffset}
+                            className="transition-all duration-1000 ease-out"
+                        />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center flex-col">
+                        <span className={`text-2xl font-bold ${completion === 100 ? 'text-emerald-400' : 'text-indigo-400'}`}>
+                            {completion}%
+                        </span>
+                        <span className="text-[10px] uppercase text-zinc-500 tracking-widest">Complete</span>
+                    </div>
+                 </div>
+                 
+                 <div className="mt-4">
+                    <h3 className="text-zinc-200 font-medium">Profile Status</h3>
+                    <p className="text-zinc-500 text-xs mt-2 leading-relaxed">
+                        {completion < 50 ? 'Low visibility. Complete your profile to appear in search results.' : 
+                         completion < 100 ? 'Good progress. Add more details to improve match quality.' : 
+                         'Optimized. Your profile is ready for maximum visibility.'}
+                    </p>
+                 </div>
+             </div>
           </div>
-
-          <div>
-            <label className="block text-sm mb-1 text-cyan-500">LOOKING_FOR</label>
-            <select
-              className={`cyber-input h-32 ${errors.lookFor ? 'border-red-500' : ''}`}
-              multiple
-              value={splitCsv(form.lookFor)}
-              onChange={(e) => onMultiSelectChange('lookFor', e.target.options)}
-            >
-              {lookForOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-            {errors.lookFor && <p className="text-red-400 text-xs mt-1">{errors.lookFor}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1 text-cyan-500">PREFERRED_OS</label>
-            <select
-              className={`cyber-input h-32 ${errors.preferredOs ? 'border-red-500' : ''}`}
-              multiple
-              value={splitCsv(form.preferredOs)}
-              onChange={(e) => onMultiSelectChange('preferredOs', e.target.options)}
-            >
-              {preferredOsOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-            {errors.preferredOs && <p className="text-red-400 text-xs mt-1">{errors.preferredOs}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1 text-cyan-500">CODING_STYLE</label>
-            <select
-              className={`cyber-input h-32 ${errors.codingStyle ? 'border-red-500' : ''}`}
-              multiple
-              value={splitCsv(form.codingStyle)}
-              onChange={(e) => onMultiSelectChange('codingStyle', e.target.options)}
-            >
-              {codingStyleOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-            {errors.codingStyle && <p className="text-red-400 text-xs mt-1">{errors.codingStyle}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1 text-cyan-500">CITY</label>
-            <input
-              className={`cyber-input ${errors.city ? 'border-red-500' : ''}`}
-              value={form.city}
-              onChange={(e) => onChange('city', e.target.value)}
-              placeholder="Tallinn / Remote"
-              maxLength={40}
-            />
-            {errors.city && <p className="text-red-400 text-xs mt-1">{errors.city}</p>}
-          </div>
-
-          <div className="md:col-span-2 pt-2">
-            <button
-              type="submit"
-              className="cyber-button w-full py-3 font-bold tracking-widest hover:text-white disabled:opacity-60"
-              disabled={saving}
-            >
-              {saving ? 'SAVING_BIO...' : 'SAVE_BIO'}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );

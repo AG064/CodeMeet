@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="ebd9cf57-ebf5-43b0-b4ff-e3e2c9b51933" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/.env" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/BackendApplication.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/config/StompPrincipal.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/config/WebSocketAuthChannelInterceptor.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/config/WebSocketPresenceEventListener.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/controller/UserController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/dto/MessageDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/dto/PresenceEventDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/dto/PresenceStatusDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/dto/PublicUserDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/dto/TypingEventDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/repository/BioRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/repository/ProfileRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/service/PresenceService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/uploads/cd66b0f8-58fd-47b5-ab3c-2c6380044b5d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/.env" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/components/Icons.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/layout/Layout.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/Chat.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/Connections.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/Matches.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/Privacy.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/PublicProfile.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/Settings.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/utils/handle.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/BackendApplication.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/config/JwtAuthenticationFilter.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/config/JwtAuthenticationFilter.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/config/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/config/WebConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/config/WebConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/config/WebSocketConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/config/WebSocketConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/controller/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/controller/AuthController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/controller/ChatController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/controller/ChatController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/controller/ConnectionController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/controller/ConnectionController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/controller/RecommendationController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/controller/RecommendationController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/controller/UserController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/dto/BioDto.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/dto/BioDto.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/dto/LoginRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/dto/LoginRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/dto/MessageDto.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/dto/ProfileDto.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/dto/ProfileDto.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/dto/RegisterRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/dto/RegisterRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/dto/UserResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/dto/UserResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/model/Bio.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/model/Bio.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/model/Connection.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/model/Connection.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/model/ConnectionStatus.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/model/ConnectionStatus.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/model/Message.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/model/Message.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/model/Profile.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/model/Profile.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/model/User.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/model/User.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/repository/BioRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/repository/ConnectionRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/repository/ConnectionRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/repository/MessageRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/repository/MessageRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/repository/ProfileRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/repository/UserRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/repository/UserRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/service/FileService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/service/FileService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/service/JwtService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/service/JwtService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/matchme/backend/service/RecommendationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/codemeet/backend/service/RecommendationService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/test/java/com/matchme/backend/BackendApplicationTests.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/test/java/com/codemeet/backend/BackendApplicationTests.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/api/axios.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/api/axios.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/index.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Dashboard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Dashboard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Login.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Login.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Register.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Register.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/SetupBio.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/SetupBio.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/vite.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/vite.config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/shared/types.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/plan.md" beforeDir="false" afterPath="$PROJECT_DIR$/plan.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/task.md" beforeDir="false" afterPath="$PROJECT_DIR$/task.md" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 3
+}</component>
+  <component name="ProjectId" id="3AS502UZaG0oMWFLJt3CzpMQznh" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+    <option name="sortByType" value="true" />
+    <option name="sortKey" value="BY_TYPE" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "git-widget-placeholder": "Merging main",
+    "kotlin-language-version-configured": "true",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.0",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RunManager" selected="Spring Boot.BackendApplication">
+    <configuration name="BackendApplication (1)" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+      <module name="backend" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.matchme.backend.BackendApplication" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="BackendApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+      <module name="backend" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.codemeet.backend.BackendApplication" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-2fc7cc6b9a17-intellij.indexing.shared.core-IU-253.31033.145" />
+        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-IU-253.31033.145" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="ebd9cf57-ebf5-43b0-b4ff-e3e2c9b51933" name="Changes" comment="" />
+      <created>1772572904560</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1772572904560</updated>
+      <workItem from="1772572905836" duration="2905000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

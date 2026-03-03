@@ -1,9 +1,80 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
-:root { font-family: "Courier New", monospace; background-color: #0a0a0a; color: #00ffcc; }
-body { margin: 0; min-height: 100vh; background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%); }
-.cyber-panel { background-color: rgba(10, 10, 10, 0.8); border: 1px solid #00ffcc; box-shadow: 0 0 10px rgba(0, 255, 204, 0.2), inset 0 0 10px rgba(0, 255, 204, 0.1); }
-.cyber-button { background: transparent; color: #ff00ff; border: 1px solid #ff00ff; text-transform: uppercase; transition: all 0.2s ease; }
-.cyber-button:hover { background: rgba(255, 0, 255, 0.1); box-shadow: 0 0 15px rgba(255, 0, 255, 0.5); text-shadow: 0 0 5px #ff00ff; }
-.cyber-input { background: #0f0f1a; border: 1px solid #3366ff; color: #00ffcc; transition: border-color 0.2s; padding: 0.5rem; width: 100%; }
-.cyber-input:focus { outline: none; border-color: #00ffcc; box-shadow: 0 0 8px rgba(0, 255, 204, 0.4); }
+:root {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #09090b; /* zinc-950 */
+  color: #e4e4e7; /* zinc-200 */
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  background: radial-gradient(circle at top right, #18181b 0%, #09090b 100%); /* zinc-900 to zinc-950 */
+  background-attachment: fixed;
+  overflow: hidden;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #3f3f46; /* zinc-700 */
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b; /* zinc-600 */
+}
+
+/* Utility classes for the new design system */
+.glass-panel {
+  @apply bg-zinc-900/60 backdrop-blur-xl border border-zinc-800 shadow-xl;
+}
+
+.cyber-card {
+  @apply bg-zinc-800/20 border border-white/5 rounded-2xl transition-all duration-300 backdrop-blur-sm;
+}
+.cyber-card:hover {
+  @apply bg-zinc-800/40 border-indigo-500/20 transform -translate-y-0.5 shadow-lg shadow-indigo-500/5;
+}
+
+.btn-primary {
+  @apply bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 px-6 rounded-full
+         transition-all duration-200 shadow-lg shadow-indigo-900/20 backdrop-blur-sm
+         border border-white/10 flex items-center justify-center gap-2;
+}
+
+.btn-secondary {
+  @apply bg-zinc-800/50 hover:bg-zinc-700/50 text-zinc-300 font-medium py-2 px-6 rounded-full
+         transition-all duration-200 border border-zinc-700/50 hover:border-zinc-500/50;
+}
+
+.input-field {
+  @apply bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-100 placeholder-zinc-500
+         focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all;
+}
+
+.nav-item {
+  @apply flex flex-col lg:flex-row items-center justify-center lg:justify-start lg:gap-3 px-2 lg:px-4 py-3 text-zinc-500 rounded-xl transition-all duration-200 w-full;
+}
+.nav-item:hover, .active {
+  @apply bg-white/5 text-indigo-400;
+}
+.active {
+  @apply bg-indigo-500/10 font-medium;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+html, body, #root { height: 100vh; overflow: hidden; }
