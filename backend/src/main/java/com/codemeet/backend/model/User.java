@@ -8,22 +8,23 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name="users") // "user" is a reserved keyword in SQL, so we use "users" instead
-@Data // lombok annotation to generate getters, setters, toString, equals, and hashCode methods
-@NoArgsConstructor // lombok annotation to generate a no-argument constructor
+@Table(name="users")
+@Data
+@NoArgsConstructor
 
 public class User {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID) // automatically generate a UUID for the primary key
-    private UUID id; // unique identifier for each user
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-    @Column(nullable = false, unique = true) // email must be unique and cannot be null
+    @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false) // password cannot be null
-    private String password; // we will store the bcrypt hashed password here
+    @Column(nullable = false)
+    private String password;
 
+    @Column(unique = true)
     private String name;
 
     private String profilePicture;

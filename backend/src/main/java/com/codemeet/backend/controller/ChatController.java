@@ -10,6 +10,7 @@ import com.codemeet.backend.model.User;
 import com.codemeet.backend.repository.ConnectionRepository;
 import com.codemeet.backend.repository.MessageRepository;
 import com.codemeet.backend.repository.UserRepository;
+import com.codemeet.backend.service.FileService;
 import com.codemeet.backend.service.PresenceService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,8 +22,10 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.security.Principal;
 import java.util.HashMap;
 import java.util.List;
@@ -39,13 +42,15 @@ public class ChatController {
     private final ConnectionRepository connectionRepository;
     private final SimpMessagingTemplate messagingTemplate;
         private final PresenceService presenceService;
+        private final FileService fileService;
 
-        public ChatController(MessageRepository messageRepository, UserRepository userRepository, ConnectionRepository connectionRepository, SimpMessagingTemplate messagingTemplate, PresenceService presenceService) {
+        public ChatController(MessageRepository messageRepository, UserRepository userRepository, ConnectionRepository connectionRepository, SimpMessagingTemplate messagingTemplate, PresenceService presenceService, FileService fileService) {
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.connectionRepository = connectionRepository;
         this.messagingTemplate = messagingTemplate;
                 this.presenceService = presenceService;
+                this.fileService = fileService;
     }
 
     // --- WebSocket Endpoints ---
@@ -63,27 +68,22 @@ public class ChatController {
         User recipient = userRepository.findById(chatMessage.getRecipientId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipient not found"));
 
-        // 2. Validate connection exists
         connectionRepository.findConnectionBetweenUsers(sender, recipient, ConnectionStatus.ACCEPTED)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Not connected with this user"));
 
-        // 3. Save message
         Message message = new Message();
         message.setSender(sender);
         message.setRecipient(recipient);
         message.setContent(chatMessage.getContent());
         Message savedMessage = messageRepository.save(message);
 
-        // 4. Map to Dto and broadcast
         MessageDto mapped = mapToDto(savedMessage);
 
-        // Send to queue specific to the user. E.g. /user/{recipientId}/queue/messages
-        // Use the users unique user identifier to push notifications
+        // Send to recipient and echo back to sender
         messagingTemplate.convertAndSendToUser(
                 recipient.getId().toString(), "/queue/messages", mapped
         );
-        
-        // Optionally echo back to the sender
+
         messagingTemplate.convertAndSendToUser(
                  sender.getId().toString(), "/queue/messages", mapped
         );
@@ -165,16 +165,59 @@ public class ChatController {
           return ResponseEntity.ok(dto);
     }
 
+    @PostMapping("/upload/{recipientId}")
+    public ResponseEntity<MessageDto> uploadAttachment(
+            @PathVariable UUID recipientId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "content", required = false, defaultValue = "") String content,
+            Authentication authentication) {
+
+        User sender = getCurrentUser(authentication);
+        User recipient = userRepository.findById(recipientId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipient not found"));
+
+        connectionRepository.findConnectionBetweenUsers(sender, recipient, ConnectionStatus.ACCEPTED)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Not connected with this user"));
+
+        String fileUrl;
+        try {
+            fileUrl = fileService.saveFile(file);
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload file");
+        }
+
+        String messageContent = content.isBlank() ? file.getOriginalFilename() : content;
+
+        Message message = new Message();
+        message.setSender(sender);
+        message.setRecipient(recipient);
+        message.setContent(messageContent);
+        message.setAttachmentUrl(fileUrl);
+        message.setAttachmentName(file.getOriginalFilename());
+        Message savedMessage = messageRepository.save(message);
+
+        MessageDto dto = mapToDto(savedMessage);
+
+        messagingTemplate.convertAndSendToUser(
+                recipient.getId().toString(), "/queue/messages", dto
+        );
+        messagingTemplate.convertAndSendToUser(
+                sender.getId().toString(), "/queue/messages", dto
+        );
+
+        return ResponseEntity.ok(dto);
+    }
+
     // Get Active Chats overview – includes ALL accepted connections so new
     // conversations appear immediately even before any messages are exchanged.
     @GetMapping("/partners")
     public ResponseEntity<List<Map<String, Object>>> getChatPartners(Authentication authentication) {
         User currentUser = getCurrentUser(authentication);
 
-        // 1. Partners with existing messages (ordered by latest message)
+        // Partners with existing messages (ordered by most recent)
         List<UUID> messagePartnerIds = messageRepository.findActiveChatPartners(currentUser.getId());
 
-        // 2. All accepted connections (may include partners with no messages yet)
+        // All accepted connections (includes partners with no messages yet)
         List<Connection> acceptedConnections = connectionRepository.findByUserAndStatus(currentUser, ConnectionStatus.ACCEPTED);
 
         // Build ordered result: message-partners first (preserve recency), then
@@ -246,6 +289,8 @@ public class ChatController {
                 .senderId(message.getSender().getId())
                 .recipientId(message.getRecipient().getId())
                 .content(message.getContent())
+                .attachmentUrl(message.getAttachmentUrl())
+                .attachmentName(message.getAttachmentName())
                 .timestamp(message.getTimestamp())
                 .isRead(message.isRead())
                 .build();

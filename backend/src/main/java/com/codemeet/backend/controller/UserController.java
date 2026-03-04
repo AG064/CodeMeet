@@ -214,15 +214,10 @@ public class UserController {
         }
 
         Optional<Connection> connection = connectionRepository.findAllConnectionsBetweenUsers(current, target);
-        // Если есть связь (PENDING или ACCEPTED)
         if (connection.isPresent()) {
-            if (connection.get().getStatus() != ConnectionStatus.REJECTED) {
-                return true;
-            }
-            return false; // REJECTED - скрываем
+            return connection.get().getStatus() != ConnectionStatus.REJECTED;
         }
 
-        // Проверяем, есть ли пользователь в списке рекомендаций (топ 50 например)
         return recommendationService.getRecommendationsForUser(current, 50).contains(target.getId());
     }
 

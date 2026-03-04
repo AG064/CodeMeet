@@ -18,8 +18,8 @@ public class Profile {
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
     private User user;
 
-    @Column(length = 1000) // allow for longer aboutMe's
+    @Column(length = 1000)
     private String aboutMe;
 
-    private boolean isOnline = false; // default to offline
+    private boolean isOnline = false;
 }

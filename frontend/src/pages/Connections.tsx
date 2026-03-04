@@ -128,7 +128,7 @@ const Connections: React.FC = () => {
   };
 
   const handleMessage = (userId: string) => {
-      navigate(`/chat?recipient=${userId}`);
+      navigate(`/chat/${userId}`);
   };
 
   if (loading) return (

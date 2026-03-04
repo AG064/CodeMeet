@@ -45,6 +45,7 @@ const calculateCompletion = (bio: BioForm): number => {
 const SetupBio: React.FC = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState<BioForm>(defaultBio);
+  const [aboutMe, setAboutMe] = useState('');
   const [errors, setErrors] = useState<BioErrors>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,9 +79,14 @@ const SetupBio: React.FC = () => {
         });
       } catch {
         // No existing bio yet is fine; keep defaults.
-      } finally {
-        setLoading(false);
       }
+      try {
+        const profileRes = await api.get('/me/profile');
+        setAboutMe(profileRes.data?.aboutMe || '');
+      } catch {
+        // No profile yet
+      }
+      setLoading(false);
     };
 
     preloadBio();
@@ -169,6 +175,7 @@ const SetupBio: React.FC = () => {
 
     try {
       await api.post('/me/bio', form);
+      await api.post('/me/profile', { aboutMe });
       setSuccess('Profile updated successfully');
       setTimeout(() => navigate('/dashboard'), 800);
     } catch (err: any) {
@@ -243,7 +250,7 @@ const SetupBio: React.FC = () => {
                 {error && <div className="absolute top-0 left-0 w-full bg-rose-500/20 text-rose-300 text-xs px-4 py-1 text-center">{error}</div>}
                 {success && <div className="absolute top-0 left-0 w-full bg-emerald-500/20 text-emerald-300 text-xs px-4 py-1 text-center">{success}</div>}
                 
-                <form onSubmit={handleSubmit} className="space-y-8 mt-2">
+                <form id="bio-form" onSubmit={handleSubmit} className="space-y-8 mt-2">
                     {renderMultiSelect('primaryLanguage', primaryLanguageOptions, 'Primary Stack (Max 3)')}
                     
                     <div className="space-y-4">
@@ -274,7 +281,7 @@ const SetupBio: React.FC = () => {
                             value={form.city}
                             onChange={(e) => onChange('city', e.target.value)}
                             placeholder="e.g. San Francisco"
-                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-2.5 text-zinc-200 placeholder-zinc-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono text-sm"
+                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-2.5 text-zinc-200 placeholder-zinc-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all text-sm"
                          />
                          {errors.city && <span className="text-rose-500 text-xs">{errors.city}</span>}
                     </div>
@@ -283,29 +290,27 @@ const SetupBio: React.FC = () => {
                     {renderMultiSelect('codingStyle', codingStyleOptions, 'Work Style (Max 3)')}
                     {renderMultiSelect('preferredOs', preferredOsOptions, 'Preferred Environment (Max 3)')}
 
-                    <div className="pt-4 flex gap-4">
-                        <button
-                            type="button"
-                            onClick={() => navigate('/dashboard')}
-                            className="flex-1 py-3 text-sm font-medium text-zinc-400 hover:text-zinc-200"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={saving}
-                            className="flex-[2] py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition-all font-medium disabled:opacity-50"
-                        >
-                            {saving ? 'Syncing...' : 'Save Configuration'}
-                        </button>
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                            <label className="text-xs uppercase tracking-wider text-zinc-500 font-bold">About Me</label>
+                            <span className="text-xs text-zinc-600">{aboutMe.length}/1000</span>
+                        </div>
+                        <textarea
+                            value={aboutMe}
+                            onChange={(e) => { if (e.target.value.length <= 1000) setAboutMe(e.target.value); }}
+                            placeholder="Tell others a bit about yourself — what you're working on, what motivates you, or anything you'd like people to know..."
+                            rows={4}
+                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-200 placeholder-zinc-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all text-sm resize-none"
+                        />
                     </div>
                 </form>
               </div>
           </div>
 
-          {/* Right Column: Status */}
+          {/* Right Column: Status + Actions */}
           <div className="lg:col-span-1">
-             <div className="glass-panel p-6 rounded-2xl border border-white/5 sticky top-6 text-center">
+             <div className="sticky top-6 space-y-4">
+             <div className="glass-panel p-6 rounded-2xl border border-white/5 text-center">
                  <div className="relative inline-flex items-center justify-center p-4">
                     <svg width={ringSize} height={ringSize} className="-rotate-90">
                         <circle
@@ -345,6 +350,26 @@ const SetupBio: React.FC = () => {
                          'Optimized. Your profile is ready for maximum visibility.'}
                     </p>
                  </div>
+             </div>
+
+             {/* Save / Cancel */}
+             <div className="glass-panel p-4 rounded-2xl border border-white/5 flex flex-col gap-2">
+                <button
+                    type="submit"
+                    form="bio-form"
+                    disabled={saving}
+                    className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition-all font-medium disabled:opacity-50"
+                >
+                    {saving ? 'Syncing...' : 'Save Configuration'}
+                </button>
+                <button
+                    type="button"
+                    onClick={() => navigate('/dashboard')}
+                    className="w-full py-2.5 text-sm font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
+                >
+                    Cancel
+                </button>
+             </div>
              </div>
           </div>
       </div>

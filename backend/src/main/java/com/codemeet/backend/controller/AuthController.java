@@ -32,18 +32,19 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Email is already in use");
         }
 
-        User newUser = new User();
-        newUser.setEmail(request.getEmail());
         String requestedName = request.getName() != null ? request.getName().trim() : "";
-        if (!requestedName.isBlank()) {
-            newUser.setName(requestedName);
-        } else {
+        if (requestedName.isBlank()) {
             String email = request.getEmail() != null ? request.getEmail().trim() : "";
             int atIndex = email.indexOf('@');
-            String fallback = atIndex > 0 ? email.substring(0, atIndex) : "coder";
-            newUser.setName(fallback);
+            requestedName = atIndex > 0 ? email.substring(0, atIndex) : "coder";
         }
-        // Hash the password with a salt (bcrypt automatically handles salting)
+        if (userRepository.findByName(requestedName).isPresent()) {
+            return ResponseEntity.badRequest().body("Username is already taken");
+        }
+
+        User newUser = new User();
+        newUser.setEmail(request.getEmail());
+        newUser.setName(requestedName);
         newUser.setPassword(passwordEncoder.encode(request.getPassword()));
 
         userRepository.save(newUser);
@@ -53,14 +54,27 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody LoginRequest request) {
-        Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
+        String identifier = request.getIdentifier() != null ? request.getIdentifier().trim() : "";
+
+        // Try email first, then username
+        Optional<User> userOptional = identifier.contains("@")
+                ? userRepository.findByEmail(identifier)
+                : userRepository.findByName(identifier);
+
+        // Fallback: if not found by name, try email (and vice versa)
+        if (userOptional.isEmpty()) {
+            userOptional = identifier.contains("@")
+                    ? userRepository.findByName(identifier)
+                    : userRepository.findByEmail(identifier);
+        }
+
         if (userOptional.isPresent()) {
-            User user = userOptional.get ();
+            User user = userOptional.get();
             if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                 String token = jwtService.generateToken(user.getEmail(), user.getId().toString());
                 return ResponseEntity.ok(token);
             }
         }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
     }
 }
