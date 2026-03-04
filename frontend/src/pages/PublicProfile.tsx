@@ -18,6 +18,10 @@ type PublicBio = {
   city?: string;
 };
 
+type PublicProfile = {
+  aboutMe?: string;
+};
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '');
 
@@ -26,6 +30,7 @@ const PublicProfile: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<PublicUser | null>(null);
   const [bio, setBio] = useState<PublicBio | null>(null);
+  const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,9 +39,10 @@ const PublicProfile: React.FC = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const [{ data: u }, { data: b }] = await Promise.all([
+        const [{ data: u }, { data: b }, { data: p }] = await Promise.all([
           api.get(`/users/${id}`),
-          api.get(`/users/${id}/bio`).catch(() => ({ data: {} }))
+          api.get(`/users/${id}/bio`).catch(() => ({ data: {} })),
+          api.get(`/users/${id}/profile`).catch(() => ({ data: {} }))
         ]);
 
         // Keep only public fields on client rendering path.
@@ -47,6 +53,7 @@ const PublicProfile: React.FC = () => {
           lookFor: b.lookFor,
           city: b.city
         });
+        setProfile({ aboutMe: p.aboutMe || '' });
       } catch {
         setUser(null);
       } finally {
@@ -87,6 +94,13 @@ const PublicProfile: React.FC = () => {
             <p className="text-zinc-500 text-xs mt-1">Last seen: {user.lastSeenAt ? new Date(user.lastSeenAt).toLocaleString() : 'recently'}</p>
           </div>
         </div>
+
+        {profile?.aboutMe && (
+          <div className="mt-4 pt-4 border-t border-white/5">
+            <h3 className="text-xs uppercase tracking-wider text-zinc-500 font-bold mb-2">About</h3>
+            <p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-line">{profile.aboutMe}</p>
+          </div>
+        )}
       </div>
 
       <div className="glass-panel p-6 rounded-2xl border border-white/5">

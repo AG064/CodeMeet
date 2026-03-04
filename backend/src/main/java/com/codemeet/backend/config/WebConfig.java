@@ -21,14 +21,14 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
 
-        // 1. Ваш хэндлер для загруженных файлов (аватарки, медиа и т.д.)
+        // Serve uploaded files (avatars, media)
         Path uploadPath = Paths.get(uploadDir);
         String uploadAbsolutePath = uploadPath.toFile().getAbsolutePath();
 
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + uploadAbsolutePath + "/");
 
-        // 2. Хэндлер для статики React и поддержки React Router
+        // Serve React build output and support client-side routing
         registry.addResourceHandler("/**")
                 .addResourceLocations("classpath:/static/")
                 .resourceChain(true)
@@ -37,12 +37,11 @@ public class WebConfig implements WebMvcConfigurer {
                     protected Resource getResource(String resourcePath, Resource location) throws IOException {
                         Resource requestedResource = location.createRelative(resourcePath);
 
-                        // Если запрашивается реальный файл из сборки (main.js, style.css, vite.svg)
                         if (requestedResource.exists() && requestedResource.isReadable()) {
                             return requestedResource;
                         }
 
-                        // Если файла нет (это роут React, например /profile), отдаем index.html
+                        // Fall back to index.html for React Router paths
                         return new ClassPathResource("/static/index.html");
                     }
                 });

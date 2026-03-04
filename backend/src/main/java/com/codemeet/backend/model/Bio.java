@@ -19,22 +19,21 @@ public class Bio {
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
     private User user;
 
-    // Minimum 5 biographical data points for recommendations
     @Column(columnDefinition="TEXT")
-    private String primaryLanguage; // e.g., Java, Python, TypeScript
+    private String primaryLanguage;
     
     @Column(columnDefinition="TEXT")
-    private String experienceLevel;  // e.g., Junior, Mid, Senior
+    private String experienceLevel;
     
     @Column(columnDefinition="TEXT")
-    private String lookFor;         // e.g., Mentor, Mentee, Coding Buddy, Networking
+    private String lookFor;
     
     @Column(columnDefinition="TEXT")
-    private String preferredOs;     // e.g., Linux, macOS, Windows
+    private String preferredOs;
     
     @Column(columnDefinition="TEXT")
-    private String codingStyle;     // e.g., Night Owl, Early Bird
+    private String codingStyle;
     
     @Column(columnDefinition="TEXT")
-    private String city;            // e.g., New York, London, Tokyo
+    private String city;
 }

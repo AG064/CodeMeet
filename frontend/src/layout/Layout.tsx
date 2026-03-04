@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { Client } from '@stomp/stompjs';
 import api from '../api/axios';
-import { IconHome, IconSearch, IconNetwork, IconMessage, IconUser, IconLogout, IconBell, IconInfo } from '../components/Icons';
+import { IconHome, IconSearch, IconNetwork, IconMessage, IconUser, IconLogout, IconBell, IconGear } from '../components/Icons';
 import { toHandle } from '../utils/handle';
 
 const BACKEND_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
@@ -19,6 +19,145 @@ type CurrentUser = {
   profilePicture?: string;
 };
 
+const BG_KEY = 'bgPreference';
+
+/** Renders the content-area background based on the saved preference */
+const BackgroundPattern: React.FC = () => {
+  const [, forceUpdate] = useState(0);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const animFrameRef = useRef<number>(0);
+
+  useEffect(() => {
+    const handler = () => forceUpdate((n) => n + 1);
+    window.addEventListener('bg-changed', handler);
+    return () => window.removeEventListener('bg-changed', handler);
+  }, []);
+
+  let pref: string | { type: string; url: string };
+  try { pref = JSON.parse(localStorage.getItem(BG_KEY) || '"dots"'); } catch { pref = 'dots'; }
+
+  // Canvas-based effects: matrix & starfield
+  const isMatrix = typeof pref === 'string' && pref === 'matrix';
+  const isStarfield = typeof pref === 'string' && pref === 'starfield';
+  const isCanvas = isMatrix || isStarfield;
+
+  useEffect(() => {
+    if (!isCanvas) { cancelAnimationFrame(animFrameRef.current); return; }
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
+    resize();
+    window.addEventListener('resize', resize);
+
+    if (isMatrix) {
+      const fontSize = 14;
+      const cols = Math.floor(canvas.width / fontSize);
+      const drops: number[] = Array.from({ length: cols }, () => Math.random() * -100);
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*(){}[]<>/=+-~';
+
+      let last = 0;
+      const draw = (time: number) => {
+        animFrameRef.current = requestAnimationFrame(draw);
+        if (time - last < 50) return;
+        last = time;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = 'rgba(99, 102, 241, 0.6)';
+        ctx.font = `${fontSize}px monospace`;
+
+        for (let i = 0; i < drops.length; i++) {
+          const char = chars[Math.floor(Math.random() * chars.length)];
+          ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+          if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+            drops[i] = 0;
+          }
+          drops[i] += 0.5;
+        }
+      };
+      animFrameRef.current = requestAnimationFrame(draw);
+    }
+
+    if (isStarfield) {
+      // Generate random stars, each with its own position, size, phase, and speed
+      const STAR_COUNT = 180;
+      type Star = { x: number; y: number; r: number; phase: number; speed: number; };
+      const stars: Star[] = [];
+      for (let i = 0; i < STAR_COUNT; i++) {
+        stars.push({
+          x: Math.random(),
+          y: Math.random(),
+          r: 0.5 + Math.random() * 1.8,
+          phase: Math.random() * Math.PI * 2,
+          speed: 0.3 + Math.random() * 1.2, // each star twinkles at its own rate
+        });
+      }
+
+      const draw = (time: number) => {
+        animFrameRef.current = requestAnimationFrame(draw);
+        const t = time / 1000;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        for (const star of stars) {
+          // Independent sine-wave brightness per star
+          const brightness = 0.15 + 0.85 * ((Math.sin(t * star.speed + star.phase) + 1) / 2);
+          ctx.beginPath();
+          ctx.arc(star.x * canvas.width, star.y * canvas.height, star.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+          ctx.fill();
+        }
+      };
+      animFrameRef.current = requestAnimationFrame(draw);
+    }
+
+    return () => {
+      cancelAnimationFrame(animFrameRef.current);
+      window.removeEventListener('resize', resize);
+    };
+  }, [isCanvas, isMatrix, isStarfield]);
+
+  if (isCanvas) {
+    const opacity = isStarfield ? 'opacity-[0.5]' : 'opacity-[0.35]';
+    return <canvas ref={canvasRef} className={`absolute inset-0 w-full h-full pointer-events-none ${opacity}`} />;
+  }
+
+  // Custom uploaded image
+  if (typeof pref === 'object' && pref?.type === 'image') {
+    return (
+      <div
+        className="absolute inset-0 pointer-events-none bg-custom-image opacity-20"
+        style={{ '--custom-bg-image': `url(${pref.url})` } as React.CSSProperties}
+      />
+    );
+  }
+
+  // Pattern presets
+  const classMap: Record<string, string> = {
+    dots: 'bg-pattern-dots',
+    grid: 'bg-pattern-grid',
+    cross: 'bg-pattern-cross',
+    mesh: 'bg-pattern-mesh',
+    aurora: 'bg-anim-aurora',
+    pulse: 'bg-anim-pulse',
+    waves: 'bg-anim-waves',
+  };
+
+  const cls = classMap[pref as string];
+  if (!cls) return null; // "none" = no pattern
+
+  const isMesh = pref === 'mesh';
+  const isAnimated = ['aurora', 'pulse', 'waves'].includes(pref as string);
+  const opacityClass = isAnimated ? 'opacity-[0.15]' : isMesh ? 'opacity-[0.12]' : 'opacity-[0.06]';
+  return (
+    <div className={`absolute inset-0 pointer-events-none ${cls} ${opacityClass}`} />
+  );
+};
+
 const Layout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,7 +165,6 @@ const Layout: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-  const [cookieAccepted, setCookieAccepted] = useState<boolean>(() => localStorage.getItem('cookieConsent') === 'accepted');
   const stompClient = useRef<Client | null>(null);
 
   const fetchNotifications = async () => {
@@ -83,11 +221,18 @@ const Layout: React.FC = () => {
 
   useEffect(() => {
     if (['/login', '/register'].includes(location.pathname)) return;
+
+    const token = localStorage.getItem('token');
+    if (!token || token === 'undefined' || token === 'null') {
+      localStorage.removeItem('token');
+      navigate('/login', { replace: true });
+      return;
+    }
+
     fetchCurrentUser();
     fetchNotifications();
     
     // Connect WebSocket to listen to events
-    const token = localStorage.getItem('token');
     const wsUrl = BACKEND_BASE_URL.replace(/^http/, 'ws') + '/ws';
     
     const client = new Client({
@@ -110,8 +255,6 @@ const Layout: React.FC = () => {
     
     client.activate();
     stompClient.current = client;
-
-    // We no longer poll here. STOMP replaces it.
     
     return () => {
        if (stompClient.current) {
@@ -131,7 +274,7 @@ const Layout: React.FC = () => {
     { path: '/connections', label: 'Network', icon: <IconNetwork className="w-5 h-5" /> },
     { path: '/chat', label: 'Comms', icon: <IconMessage className="w-5 h-5" /> },
     { path: '/setup-bio', label: 'Identity', icon: <IconUser className="w-5 h-5" /> },
-    { path: '/settings', label: 'Settings', icon: <IconInfo className="w-5 h-5" /> },
+    { path: '/settings', label: 'Settings', icon: <IconGear className="w-5 h-5" /> },
   ];
 
   // Don't show layout on auth pages
@@ -146,7 +289,7 @@ const Layout: React.FC = () => {
       <aside className="hidden md:flex w-20 lg:w-64 flex-shrink-0 flex-col border-r border-white/5 bg-zinc-900/30 backdrop-blur-md z-50 transition-all duration-300">
         <div className="h-20 flex items-center justify-center lg:justify-start lg:px-8 border-b border-white/5">
           <div className="h-10 w-10 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-bold">
-            M
+            C
           </div>
           <span className="ml-3 font-bold text-xl tracking-wide hidden lg:block bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
             CodeMeet
@@ -258,10 +401,8 @@ const Layout: React.FC = () => {
 
           {/* Page Content */}
           <div className="flex-1 min-h-0 overflow-hidden p-4 lg:p-8 relative">
-           {/* Background Grid Pattern */}
-           <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-                style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
-           </div>
+           {/* Background Pattern (driven by CSS class from localStorage) */}
+           <BackgroundPattern />
 
             <div className="relative z-10 h-full min-h-0 overflow-y-auto">
               <Outlet />
@@ -288,32 +429,6 @@ const Layout: React.FC = () => {
         </nav>
       </main>
 
-      {!cookieAccepted && (
-        <div className="fixed bottom-20 md:bottom-4 right-4 left-4 md:left-auto md:w-[420px] bg-zinc-900/95 border border-white/10 rounded-xl shadow-2xl p-4 z-[60]">
-          <p className="text-sm text-zinc-300 leading-relaxed">
-            We use essential cookies for authentication and security. By continuing, you consent to these cookies.
-            Read our <Link to="/privacy" className="text-indigo-300 hover:text-indigo-200">Privacy statement</Link>.
-          </p>
-          <div className="mt-3 flex justify-end gap-2">
-            <button
-              onClick={() => navigate('/privacy')}
-              className="px-3 py-1.5 text-xs rounded-lg border border-white/10 text-zinc-300 hover:bg-white/5"
-            >
-              Review
-            </button>
-            <button
-              onClick={() => {
-                localStorage.setItem('cookieConsent', 'accepted');
-                setCookieAccepted(true);
-              }}
-              className="px-3 py-1.5 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white"
-            >
-              Accept
-            </button>
-          </div>
-        </div>
-      )}
-      
     </div>
   );
 };

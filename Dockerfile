@@ -19,6 +19,7 @@ RUN mvn clean package -DskipTests
 
 # pRuntime image
 FROM eclipse-temurin:21-jre-alpine
+RUN apk add --no-cache python3 py3-pip
 WORKDIR /app
 # Use a wildcard to find the jar regardless of version name
 COPY --from=backend-build /build/backend/target/*.jar app.jar

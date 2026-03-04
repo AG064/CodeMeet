@@ -24,8 +24,13 @@ public class Message {
     @JoinColumn(name = "recipient_id", nullable = false)
     private User recipient;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String content;
+
+    @Column(columnDefinition = "TEXT")
+    private String attachmentUrl;
+
+    private String attachmentName;
 
     @Column(nullable = false)
     private ZonedDateTime timestamp = ZonedDateTime.now();

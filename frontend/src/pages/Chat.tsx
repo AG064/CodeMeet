@@ -21,6 +21,8 @@ type Message = {
   senderId: string;
   recipientId: string;
   content: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
   timestamp: string;
   isRead: boolean;
 };
@@ -64,6 +66,8 @@ const Chat: React.FC = () => {
    const [searchQuery, setSearchQuery] = useState('');
    const [isMenuOpen, setIsMenuOpen] = useState(false);
    const [isEditMode, setIsEditMode] = useState(false);
+   const [pendingFile, setPendingFile] = useState<File | null>(null);
+   const [uploading, setUploading] = useState(false);
   
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [activePartnerData, setActivePartnerData] = useState<ChatPartner | null>(null);
@@ -71,11 +75,11 @@ const Chat: React.FC = () => {
   const stompClient = useRef<Client | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
    const messagesContainerRef = useRef<HTMLDivElement>(null);
+   const fileInputRef = useRef<HTMLInputElement>(null);
    const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
    const typingIndicatorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
    const typingStateRef = useRef(false);
 
-  // 1. Initialize logic
   useEffect(() => {
     fetchInitialData();
 
@@ -99,7 +103,6 @@ const Chat: React.FC = () => {
       return () => clearInterval(id);
    }, []);
 
-   // 2. Fetch specific chat history when partnerId changes
    useEffect(() => {
       if (partnerId && currentUserId) {
           fetchChatHistory(partnerId);
@@ -111,7 +114,7 @@ const Chat: React.FC = () => {
       }
    }, [partnerId, currentUserId]);
 
-      // 2b. Keep active partner header in sync without re-fetching history repeatedly
+      // Keep active partner header in sync
    useEffect(() => {
       if (!partnerId) {
          setActivePartnerData(null);
@@ -130,13 +133,12 @@ const Chat: React.FC = () => {
       setupActivePartnerData(partnerId);
    }, [partnerId, partners]);
 
-  // 3. Scroll to bottom when messages update
+  // Keep chat scrolled to the latest message
   useEffect(() => {
       const scrollToLatest = () => {
          if (messagesContainerRef.current) {
             messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
          }
-         messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
       };
 
       // Wait one frame so DOM height is finalized
@@ -258,15 +260,13 @@ const Chat: React.FC = () => {
          client.subscribe('/user/queue/messages', (msg) => {
             const incomingMessage: Message = JSON.parse(msg.body);
             
-            // 1. Instantly append message if it belongs to open chat
+            // Append message if it belongs to the open chat
             setMessages((prevMsg) => {
-               // Security check: Ignore duplicates if STOMP triggers twice internally
                if (prevMsg.find(m => m.id === incomingMessage.id)) return prevMsg;
                
-               // Get current ID directly from URL to avoid closure staleness
+               // Read partnerId from URL to avoid stale closure
                const currentPathId = window.location.pathname.split('/').pop() || '';
                
-               // Check if message belongs to the CURRENTLY OPEN chat
                const isRelevant = 
                   (incomingMessage.senderId === currentPathId && incomingMessage.recipientId === uId) ||
                   (incomingMessage.senderId === uId && incomingMessage.recipientId === currentPathId);
@@ -277,7 +277,7 @@ const Chat: React.FC = () => {
                return prevMsg;
             });
 
-            // 2. Adjust Partners list and read counters
+            // Update partner list ordering and read counters
             setPartners((prev) => {
                const partnerIdToFind = incomingMessage.senderId === uId ? incomingMessage.recipientId : incomingMessage.senderId;
                let partnerIndex = prev.findIndex(p => p.id === partnerIdToFind);
@@ -286,13 +286,12 @@ const Chat: React.FC = () => {
                const isTargetingUsAndNotActive = incomingMessage.senderId !== uId && currentActiveId !== partnerIdToFind;
                
                if (partnerIndex === -1) {
-                  // Partner not in list, trigger a fetch
                   fetchInitialData(); 
                   return prev;
                }
 
                const pArray = [...prev];
-               const targetPartner = pArray.splice(partnerIndex, 1)[0]; // Remove element
+               const targetPartner = pArray.splice(partnerIndex, 1)[0];
                
                if (isTargetingUsAndNotActive) {
                    targetPartner.unreadCount = (targetPartner.unreadCount || 0) + 1;
@@ -371,6 +370,34 @@ const Chat: React.FC = () => {
 
       setNewMessage('');
          sendTyping(false);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) setPendingFile(file);
+      e.target.value = '';
+  };
+
+  const handleSendAttachment = async () => {
+      if (!pendingFile || !partnerId) return;
+      setUploading(true);
+      try {
+          const formData = new FormData();
+          formData.append('file', pendingFile);
+          formData.append('content', newMessage.trim() || pendingFile.name);
+          const res = await api.post(`/chat/upload/${partnerId}`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          if (res.data) {
+              setMessages((prev) => sortMessagesAsc([...prev, res.data]));
+          }
+          setPendingFile(null);
+          setNewMessage('');
+      } catch (err) {
+          console.error('Attachment upload failed', err);
+      } finally {
+          setUploading(false);
+      }
   };
 
    const sendTyping = (typing: boolean) => {
@@ -534,7 +561,7 @@ const Chat: React.FC = () => {
       </div>
 
       {/* Main Panel: Chat Window */}
-      <div className={`flex-1 min-h-0 flex flex-col bg-zinc-900/30 relative ${!partnerId ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 min-h-0 flex flex-col bg-zinc-900/30 relative overflow-hidden ${!partnerId ? 'hidden md:flex' : 'flex'}`}>
          {/* Decorative Gradients */}
          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
          <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/5 rounded-full blur-3xl pointer-events-none translate-y-1/2 -translate-x-1/2"></div>
@@ -653,7 +680,28 @@ const Chat: React.FC = () => {
                                          ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-sm border-indigo-500/20' 
                                          : 'bg-zinc-800/80 text-zinc-100 rounded-2xl rounded-tl-sm border-white/5'
                                    } transition-all hover:shadow-lg`}>
-                                      {m.content}
+                                      {m.attachmentUrl && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(m.attachmentUrl) ? (
+                                         <a href={`${BACKEND_BASE_URL}${m.attachmentUrl}`} target="_blank" rel="noopener noreferrer">
+                                            <img
+                                               src={`${BACKEND_BASE_URL}${m.attachmentUrl}`}
+                                               alt={m.attachmentName || 'image'}
+                                               className="max-w-[280px] max-h-[300px] rounded-lg mb-1 cursor-pointer"
+                                            />
+                                         </a>
+                                      ) : m.attachmentUrl ? (
+                                         <a
+                                            href={`${BACKEND_BASE_URL}${m.attachmentUrl}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={`flex items-center gap-2 mb-1 ${isOwn ? 'text-indigo-100 hover:text-white' : 'text-indigo-400 hover:text-indigo-300'} transition-colors`}
+                                         >
+                                            <IconPaperclip className="w-4 h-4 shrink-0" />
+                                            <span className="underline truncate">{m.attachmentName || 'Download file'}</span>
+                                         </a>
+                                      ) : null}
+                                      {m.content && !(m.attachmentUrl && m.content === m.attachmentName) && (
+                                         <span>{m.content}</span>
+                                      )}
                                    </div>
                                    {isEditMode && isOwn && (
                                       <button
@@ -697,8 +745,22 @@ const Chat: React.FC = () => {
                 </div>
 
                 {/* Message Input Input */}
+                {pendingFile && (
+                    <div className="px-5 py-2 bg-zinc-900/80 border-t border-white/5 flex items-center gap-2">
+                       <IconPaperclip className="w-4 h-4 text-indigo-400 shrink-0" />
+                       <span className="text-sm text-zinc-300 truncate flex-1">{pendingFile.name}</span>
+                       <button onClick={() => setPendingFile(null)} className="text-zinc-400 hover:text-zinc-200 transition-colors">
+                          <IconX className="w-4 h-4" />
+                       </button>
+                    </div>
+                )}
+
                 <div className="p-5 bg-zinc-900/60 backdrop-blur-xl border-t border-white/5 flex shrink-0 gap-3 w-full z-20 items-end">
-                    <button className="p-3 rounded-full bg-zinc-800/50 text-zinc-400 hover:text-indigo-400 hover:bg-zinc-800 transition-colors border border-white/5">
+                    <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+                    <button
+                       onClick={() => fileInputRef.current?.click()}
+                       className="p-3 rounded-full bg-zinc-800/50 text-zinc-400 hover:text-indigo-400 hover:bg-zinc-800 transition-colors border border-white/5"
+                    >
                        <IconPaperclip className="w-5 h-5" />
                     </button>
                     <div className="flex-1 bg-zinc-800/50 rounded-2xl border border-zinc-700/50 focus-within:border-indigo-500/50 focus-within:bg-zinc-800 transition-all flex items-center shadow-inner">
@@ -706,15 +768,15 @@ const Chat: React.FC = () => {
                           type="text" 
                           value={newMessage}
                           onChange={(e) => handleMessageInput(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                          onKeyDown={(e) => e.key === 'Enter' && (pendingFile ? handleSendAttachment() : handleSendMessage())}
                           className="flex-1 bg-transparent border-none outline-none text-zinc-200 placeholder-zinc-500 px-4 py-3"
-                          placeholder="Type a message..."
+                          placeholder={pendingFile ? 'Add a caption...' : 'Type a message...'}
                           autoFocus
                        />
                     </div>
                     <button 
-                       onClick={handleSendMessage}
-                       disabled={!newMessage.trim()}
+                       onClick={pendingFile ? handleSendAttachment : handleSendMessage}
+                       disabled={uploading || (!pendingFile && !newMessage.trim())}
                        className="p-3 rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-500 hover:scale-105 transition-all active:scale-95 flex items-center justify-center h-[50px] w-[50px]"
                     >
                        <IconSend className="w-5 h-5" />

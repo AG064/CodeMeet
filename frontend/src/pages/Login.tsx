@@ -4,7 +4,7 @@ import api from '../api/axios';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
-    const [email, setEmail] = useState('');
+    const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -15,7 +15,7 @@ const Login: React.FC = () => {
         setLoading(true);
 
         try {
-            const res = await api.post('/auth/login', { email, password });
+            const res = await api.post('/auth/login', { identifier, password });
             // Handle both string token (legacy) and object token
             const token = typeof res.data === 'string' ? res.data : res.data?.token;
             
@@ -56,13 +56,13 @@ const Login: React.FC = () => {
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Email</label>
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Email or Username</label>
                         <input
-                            type="email"
-                            placeholder="name@company.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3.5 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono text-sm"
+                            type="text"
+                            placeholder="name@company.com or your_handle"
+                            value={identifier}
+                            onChange={(e) => setIdentifier(e.target.value)}
+                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3.5 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all text-sm"
                             required
                         />
                     </div>
@@ -70,14 +70,13 @@ const Login: React.FC = () => {
                     <div className="space-y-1.5">
                         <div className="flex justify-between items-baseline">
                             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Password</label>
-                            <a href="#" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">Forgot password?</a>
                         </div>
                         <input
                             type="password"
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3.5 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono text-sm"
+                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3.5 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all text-sm"
                             required
                         />
                     </div>
@@ -100,7 +99,7 @@ const Login: React.FC = () => {
             </div>
             
             <div className="absolute bottom-6 text-zinc-800 text-xs font-mono">
-                SYSTEM_VERSION: v2.4.0
+                CodeMeet v1.0
             </div>
         </div>
     );

@@ -1,15 +1,53 @@
 ﻿@import "tailwindcss";
 
+/* Monaspace Argon — Humanist sans (GitHub) */
+@font-face { font-family: "Monaspace Argon"; src: url("/fonts/MonaspaceArgon-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Argon"; src: url("/fonts/MonaspaceArgon-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Argon"; src: url("/fonts/MonaspaceArgon-SemiBold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Argon"; src: url("/fonts/MonaspaceArgon-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+
+/* Monaspace Neon — Neo-grotesque (GitHub) */
+@font-face { font-family: "Monaspace Neon"; src: url("/fonts/MonaspaceNeon-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Neon"; src: url("/fonts/MonaspaceNeon-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Neon"; src: url("/fonts/MonaspaceNeon-SemiBold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Neon"; src: url("/fonts/MonaspaceNeon-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+
+/* Monaspace Xenon — Slab serif (GitHub) */
+@font-face { font-family: "Monaspace Xenon"; src: url("/fonts/MonaspaceXenon-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Xenon"; src: url("/fonts/MonaspaceXenon-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Xenon"; src: url("/fonts/MonaspaceXenon-SemiBold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Xenon"; src: url("/fonts/MonaspaceXenon-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+
+/* Monaspace Radon — Handwriting (GitHub) */
+@font-face { font-family: "Monaspace Radon"; src: url("/fonts/MonaspaceRadon-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Radon"; src: url("/fonts/MonaspaceRadon-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Radon"; src: url("/fonts/MonaspaceRadon-SemiBold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Radon"; src: url("/fonts/MonaspaceRadon-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+
+/* Monaspace Krypton — Mechanical (GitHub) */
+@font-face { font-family: "Monaspace Krypton"; src: url("/fonts/MonaspaceKrypton-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Krypton"; src: url("/fonts/MonaspaceKrypton-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Krypton"; src: url("/fonts/MonaspaceKrypton-SemiBold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Monaspace Krypton"; src: url("/fonts/MonaspaceKrypton-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+
+@theme {
+  --font-sans: var(--app-font, "Inter"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
 :root {
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: #09090b; /* zinc-950 */
-  color: #e4e4e7; /* zinc-200 */
+  --app-font: "Inter";
+  --body-bg: radial-gradient(circle at top right, #18181b 0%, #09090b 100%);
+  --scrollbar-thumb: #3f3f46;
+  --scrollbar-hover: #52525b;
+  font-family: var(--app-font, "Inter"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #09090b;
+  color: #e4e4e7;
 }
 
 body {
   margin: 0;
   height: 100vh;
-  background: radial-gradient(circle at top right, #18181b 0%, #09090b 100%); /* zinc-900 to zinc-950 */
+  background: var(--body-bg);
   background-attachment: fixed;
   overflow: hidden;
 }
@@ -23,11 +61,202 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3f3f46; /* zinc-700 */
+  background: var(--scrollbar-thumb, #3f3f46);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #52525b; /* zinc-600 */
+  background: var(--scrollbar-hover, #52525b);
+}
+
+/* ── Custom Theme ── */
+[data-theme="custom"] {
+  --body-bg: linear-gradient(160deg, var(--custom-bg) 0%, var(--custom-bg) 100%);
+  --scrollbar-thumb: var(--custom-surface);
+  --scrollbar-hover: var(--custom-accent);
+  background-color: var(--custom-bg);
+  color: #e4e4e7;
+}
+
+/* ── Background Pattern System ── */
+.bg-pattern-dots {
+  background-image: radial-gradient(circle, currentColor 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.bg-pattern-grid {
+  background-image: linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.bg-pattern-cross {
+  background-image:
+    linear-gradient(currentColor 1px, transparent 1px),
+    linear-gradient(90deg, currentColor 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: center center;
+}
+.bg-pattern-mesh {
+  background-image:
+    radial-gradient(at 20% 30%, var(--color-indigo-500, #6366f1) 0%, transparent 50%),
+    radial-gradient(at 80% 70%, var(--color-indigo-700, #4338ca) 0%, transparent 50%),
+    radial-gradient(at 50% 50%, var(--color-zinc-900, #18181b) 0%, transparent 80%);
+  background-size: 100% 100%;
+}
+
+/* Custom background image */
+.bg-custom-image {
+  background-image: var(--custom-bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* ── Animated Background Presets ── */
+@keyframes bg-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-20px) scale(1.05); }
+}
+@keyframes bg-pulse-glow {
+  0%, 100% { opacity: 0.08; }
+  50% { opacity: 0.25; }
+}
+@keyframes bg-aurora-scroll {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-50%, -50%); }
+}
+@keyframes bg-scan {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 40px; }
+}
+@keyframes bg-waves-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.bg-anim-aurora {
+  overflow: hidden;
+}
+.bg-anim-aurora::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 200%; height: 200%;
+  background: linear-gradient(
+    135deg,
+    var(--color-indigo-900, #312e81) 0%,
+    var(--color-zinc-950, #09090b) 12%,
+    var(--color-indigo-700, #4338ca) 24%,
+    var(--color-zinc-950, #09090b) 36%,
+    var(--color-indigo-900, #312e81) 50%,
+    var(--color-zinc-950, #09090b) 62%,
+    var(--color-indigo-700, #4338ca) 74%,
+    var(--color-zinc-950, #09090b) 86%,
+    var(--color-indigo-900, #312e81) 100%
+  );
+  animation: bg-aurora-scroll 20s linear infinite;
+}
+.bg-anim-pulse {
+  background-image:
+    radial-gradient(ellipse at 25% 35%, var(--color-indigo-500, #6366f1) 0%, transparent 60%),
+    radial-gradient(ellipse at 75% 65%, var(--color-indigo-700, #4338ca) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 50%, var(--color-indigo-900, #312e81) 0%, transparent 70%);
+  background-size: 100% 100%;
+  animation: bg-pulse-glow 6s ease-in-out infinite;
+}
+.bg-anim-waves {
+  overflow: hidden;
+}
+.bg-anim-waves::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 200%; height: 100%;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent,
+      transparent 20px,
+      var(--color-indigo-900, #312e81) 20px,
+      var(--color-indigo-900, #312e81) 21px
+    );
+  animation: bg-waves-scroll 25s linear infinite;
+}
+
+/* ── Theme System ── */
+/* GitHub Dark — blue-tinged grays, blue accent */
+[data-theme="github-dark"] {
+  --color-zinc-50: #f0f6fc;
+  --color-zinc-100: #ecf2f8;
+  --color-zinc-200: #c9d1d9;
+  --color-zinc-300: #b1bac4;
+  --color-zinc-400: #8b949e;
+  --color-zinc-500: #6e7681;
+  --color-zinc-600: #484f58;
+  --color-zinc-700: #30363d;
+  --color-zinc-800: #21262d;
+  --color-zinc-900: #161b22;
+  --color-zinc-950: #0d1117;
+  --color-indigo-300: #79c0ff;
+  --color-indigo-400: #58a6ff;
+  --color-indigo-500: #388bfd;
+  --color-indigo-600: #1f6feb;
+  --color-indigo-700: #1158c7;
+  --color-indigo-900: #0c2d6b;
+  --body-bg: linear-gradient(160deg, #0d1117 0%, #010409 100%);
+  --scrollbar-thumb: #30363d;
+  --scrollbar-hover: #484f58;
+  background-color: #0d1117;
+  color: #c9d1d9;
+}
+
+/* VS Code Dark+ — warm neutrals, classic editor blue */
+[data-theme="vscode"] {
+  --color-zinc-50: #f5f5f5;
+  --color-zinc-100: #e8e8e8;
+  --color-zinc-200: #cccccc;
+  --color-zinc-300: #a0a0a0;
+  --color-zinc-400: #858585;
+  --color-zinc-500: #6a6a6a;
+  --color-zinc-600: #505050;
+  --color-zinc-700: #3c3c3c;
+  --color-zinc-800: #2d2d2d;
+  --color-zinc-900: #252526;
+  --color-zinc-950: #1e1e1e;
+  --color-indigo-300: #75beff;
+  --color-indigo-400: #3794ff;
+  --color-indigo-500: #007acc;
+  --color-indigo-600: #0078d4;
+  --color-indigo-700: #005a9e;
+  --color-indigo-900: #003a6b;
+  --body-bg: linear-gradient(160deg, #1e1e1e 0%, #181818 100%);
+  --scrollbar-thumb: #3c3c3c;
+  --scrollbar-hover: #505050;
+  background-color: #1e1e1e;
+  color: #cccccc;
+}
+
+/* Dracula — purple-tinted classic developer palette */
+[data-theme="dracula"] {
+  --color-zinc-50: #ffffff;
+  --color-zinc-100: #f8f8f2;
+  --color-zinc-200: #f8f8f2;
+  --color-zinc-300: #c0c5d4;
+  --color-zinc-400: #a0aac4;
+  --color-zinc-500: #8791b5;
+  --color-zinc-600: #7484b5;
+  --color-zinc-700: #6272a4;
+  --color-zinc-800: #44475a;
+  --color-zinc-900: #343746;
+  --color-zinc-950: #282a36;
+  --color-indigo-300: #e2d1ff;
+  --color-indigo-400: #d6bcfa;
+  --color-indigo-500: #bd93f9;
+  --color-indigo-600: #bd93f9;
+  --color-indigo-700: #9d5cd0;
+  --color-indigo-900: #4c1d95;
+  --body-bg: linear-gradient(160deg, #282a36 0%, #21222c 100%);
+  --scrollbar-thumb: #44475a;
+  --scrollbar-hover: #6272a4;
+  background-color: #282a36;
+  color: #f8f8f2;
 }
 
 /* Utility classes for the new design system */

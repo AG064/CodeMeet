@@ -4,7 +4,38 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <title>frontend</title>
+    <script>
+      // Apply saved preferences before first paint to avoid flash
+      (function() {
+        var font = localStorage.getItem('fontPreference');
+        if (font) document.documentElement.style.setProperty('--app-font', font);
+
+        var theme = localStorage.getItem('themePreference');
+        if (theme && theme !== 'default') {
+          document.documentElement.setAttribute('data-theme', theme);
+          // Restore custom theme colours
+          if (theme === 'custom') {
+            try {
+              var c = JSON.parse(localStorage.getItem('customThemeColors'));
+              if (c) {
+                var s = document.documentElement.style;
+                s.setProperty('--custom-bg', c.bg);
+                s.setProperty('--custom-surface', c.surface);
+                s.setProperty('--custom-accent', c.accent);
+                s.setProperty('--color-zinc-950', c.bg);
+                s.setProperty('--color-zinc-900', c.surface);
+                s.setProperty('--color-indigo-500', c.accent);
+                s.setProperty('--color-indigo-600', c.accent);
+              }
+            } catch(e) {}
+          }
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

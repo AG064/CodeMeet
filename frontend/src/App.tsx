@@ -10,6 +10,7 @@ import Chat from './pages/Chat';
 import Settings from './pages/Settings';
 import Privacy from './pages/Privacy';
 import PublicProfile from './pages/PublicProfile';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
@@ -31,6 +32,9 @@ function App() {
           <Route path="/profile/:id" element={<PublicProfile />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
+
+        {/* 404 catch-all */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );

@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "db:drop": "python3 ../scripts/drop-db.py",
+    "db:seed": "python3 ../scripts/seed-db.py",
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

@@ -33,9 +33,12 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable) // Disable CSRF for simplicity, but consider enabling it in production
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // We want stateless sessions since we're using JWTs
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/register", "/api/auth/login", "/error", "/uploads/**", "/ws/**").permitAll() // Allow unauthenticated access to auth, uploads, and websocket handshake endpoints
-                .requestMatchers("/", "/index.html", "/assets/**", "/*.js", "/*.css", "/*.ico", "/*.png", "/*.svg").permitAll() // Allow static frontend files
-                .anyRequest().authenticated() // Require authentication for all other endpoints
+                .requestMatchers("/api/auth/register", "/api/auth/login").permitAll() // Public auth endpoints
+                .requestMatchers("/api/**").authenticated() // All other API endpoints require a valid JWT
+                .requestMatchers("/ws/**").permitAll() // WebSocket handshake
+                .requestMatchers("/uploads/**").permitAll() // Uploaded files
+                .requestMatchers("/error").permitAll()
+                .anyRequest().permitAll() // All other paths (frontend routes) served as static files / SPA fallback
             )
             // Telling Spring to check our JWT filter BEFORE the standard username/password authentication filter, so that we can set the security context based on the JWT
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

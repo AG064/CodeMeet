@@ -16,6 +16,8 @@ public class MessageDto {
     private UUID senderId;
     private UUID recipientId;
     private String content;
+    private String attachmentUrl;
+    private String attachmentName;
     private ZonedDateTime timestamp;
     private Boolean isRead;
 }

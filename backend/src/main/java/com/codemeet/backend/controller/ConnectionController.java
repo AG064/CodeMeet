@@ -29,8 +29,7 @@ public class ConnectionController {
         this.messagingTemplate = messagingTemplate;
     }
 
-    // 1. Get all active connections for current user
-    // Per requirements: "which returns a list connected profiles, containing only the id and nothing else."
+    // Get all active connections for the current user (returns only IDs per spec)
     @GetMapping("/connections")
     public ResponseEntity<List<Map<String, String>>> getConnections(Authentication authentication) {
         User currentUser = getCurrentUser(authentication);
@@ -67,7 +66,6 @@ public class ConnectionController {
         return ResponseEntity.ok(response);
     }
 
-    // 2. Request a connection
     @PostMapping("/connections/request/{recipientId}")
     public ResponseEntity<List<Map<String, String>>> sendConnectionRequest(@PathVariable UUID recipientId, Authentication authentication) {
         User currentUser = getCurrentUser(authentication);
@@ -110,7 +108,6 @@ public class ConnectionController {
          return ResponseEntity.ok(response);
     }
 
-    // 4. Accept connection
     @PostMapping("/connections/{connectionId}/accept")
     public ResponseEntity<String> acceptConnection(@PathVariable UUID connectionId, Authentication authentication) {
         User currentUser = getCurrentUser(authentication);
@@ -128,7 +125,6 @@ public class ConnectionController {
         return ResponseEntity.ok("Connection accepted");
     }
 
-    // 5. Dismiss/Reject connection
     @PostMapping("/connections/{connectionId}/reject")
     public ResponseEntity<String> rejectConnection(@PathVariable UUID connectionId, Authentication authentication) {
         User currentUser = getCurrentUser(authentication);
@@ -146,7 +142,6 @@ public class ConnectionController {
         return ResponseEntity.ok("Connection rejected");
     }
 
-    // 6. Disconnect from user (if already connected, or if active)
     @DeleteMapping("/connections/disconnect/{userId}")
     public ResponseEntity<String> disconnect(@PathVariable UUID userId, Authentication authentication) {
          User currentUser = getCurrentUser(authentication);
@@ -156,8 +151,6 @@ public class ConnectionController {
          Connection connection = connectionRepository.findConnectionBetweenUsers(currentUser, partner, ConnectionStatus.ACCEPTED)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No active connection found"));
 
-         // We could either delete the record, or mark it as deleted/rejected depending on logic.
-         // Let's delete the record.
          connectionRepository.delete(connection);
 
          return ResponseEntity.ok("Disconnected successfully");

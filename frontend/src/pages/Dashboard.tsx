@@ -19,6 +19,7 @@ type Bio = {
 const Dashboard: React.FC = () => {
     const [user, setUser] = useState<any>(null);
     const [bio, setBio] = useState<Bio | null>(null);
+    const [aboutMe, setAboutMe] = useState('');
     const [uploading, setUploading] = useState(false);
     const [uploadMessage, setUploadMessage] = useState('');
     const [aliasInput, setAliasInput] = useState('');
@@ -60,6 +61,12 @@ const Dashboard: React.FC = () => {
                     setBio(bioRes.data);
                 } catch (e) {
                     // Bio probably doesn't exist yet
+                }
+                try {
+                    const profileRes = await api.get('/me/profile');
+                    setAboutMe(profileRes.data?.aboutMe || '');
+                } catch (e) {
+                    // Profile probably doesn't exist yet
                 }
             } catch (err) {
                 // If 401/403, redirect to login
@@ -159,7 +166,11 @@ const Dashboard: React.FC = () => {
                     </div>
                     
                     <h2 className="text-xl font-bold text-zinc-100">{user.name}</h2>
-                    <p className="text-indigo-400 text-sm font-medium mb-6">{toHandle(user.name)}</p>
+                    <p className="text-indigo-400 text-sm font-medium mb-3">{toHandle(user.name)}</p>
+
+                    {aboutMe && (
+                      <p className="text-zinc-400 text-xs text-center leading-relaxed mb-4 px-2 line-clamp-3">{aboutMe}</p>
+                    )}
                     
                     <div className="w-full space-y-4">
                         <div className="bg-zinc-900/50 rounded-xl p-1 flex items-center border border-zinc-800 focus-within:border-indigo-500/50 transition-colors">
@@ -288,7 +299,7 @@ const Dashboard: React.FC = () => {
                  <div onClick={() => navigate('/chat')} className="cyber-card p-6 cursor-pointer group hover:bg-indigo-900/10">
                     <div className="w-12 h-12 rounded-xl bg-zinc-800 text-2xl flex items-center justify-center mb-4 text-emerald-400 group-hover:scale-110 transition-transform"><IconMessage className="w-6 h-6" /></div>
                     <h3 className="text-lg font-bold text-zinc-200 mb-2">Comms Channels</h3>
-                    <p className="text-zinc-500 text-sm">Encrypted secure messaging with your network.</p>
+                    <p className="text-zinc-500 text-sm">Real-time messaging with your network.</p>
                  </div>
              </div>
         </div>

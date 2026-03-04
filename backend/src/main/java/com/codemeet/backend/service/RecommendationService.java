@@ -64,32 +64,32 @@ public class RecommendationService {
     private int calculateScore(Bio current, Bio candidate) {
         int score = 0;
 
-        // 1. Primary Language Match (High Weight)
+        // Primary language (high weight)
         if (current.getPrimaryLanguage() != null && current.getPrimaryLanguage().equalsIgnoreCase(candidate.getPrimaryLanguage())) {
             score += 30;
         }
 
-        // 2. City / Location Match (High Weight for rudimentary location-checking)
+        // City match (high weight — basic location check)
         if (current.getCity() != null && current.getCity().equalsIgnoreCase(candidate.getCity())) {
             score += 25;
         }
 
-        // 3. Look For Match (e.g. Mentor looking for Mentee, etc - for simplicity we do exact match for now, could be improved)
+        // What they're looking for
         if (current.getLookFor() != null && current.getLookFor().equalsIgnoreCase(candidate.getLookFor())) {
             score += 20;
         }
 
-        // 4. Experience Level
+        // Experience level
         if (current.getExperienceLevel() != null && current.getExperienceLevel().equalsIgnoreCase(candidate.getExperienceLevel())) {
             score += 15;
         }
 
-        // 5. Preferred OS
+        // Preferred OS
         if (current.getPreferredOs() != null && current.getPreferredOs().equalsIgnoreCase(candidate.getPreferredOs())) {
             score += 5;
         }
 
-        // 6. Coding Style (Night Owl, etc)
+        // Coding style
         if (current.getCodingStyle() != null && current.getCodingStyle().equalsIgnoreCase(candidate.getCodingStyle())) {
             score += 5;
         }

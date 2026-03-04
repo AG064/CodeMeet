@@ -6,6 +6,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
-    // This method will allow us to find a user by their email, which is useful for login and registration and it writes it to the database
     Optional<User> findByEmail(String email);
+    Optional<User> findByName(String name);
 }
