@@ -6,7 +6,7 @@ import { IconCheck, IconNetwork } from '../components/Icons';
 const BACKEND_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
 
 type ConnectionRequest = {
-  id: string; // The requester user id, used for profile lookups and chat navigation.
+  id: string;
   connectionId: string;
   name: string;
   profilePicture?: string;
@@ -14,10 +14,26 @@ type ConnectionRequest = {
 };
 
 type ActiveConnection = {
-  id: string; // The connected user's id, matching the lightweight backend response shape.
+  id: string;
   name: string;
   profilePicture?: string;
   bio?: { maxDistanceKm?: number; locationVisible?: boolean; primaryLanguage?: string };
+};
+
+type ConnectionSummary = {
+  id: string;
+  connectionId: string;
+};
+
+type UserSummary = {
+  name?: string;
+  profilePicture?: string;
+};
+
+type PublicBio = {
+  maxDistanceKm?: number;
+  locationVisible?: boolean;
+  primaryLanguage?: string;
 };
 
 const Connections: React.FC = () => {
@@ -34,18 +50,17 @@ const Connections: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Load pending and accepted relationships together so the page switches tabs instantly.
       const [pendingRes, activeRes] = await Promise.all([
-        api.get('/connections/pending'),
-        api.get('/connections')
+        api.get<ConnectionSummary[]>('/connections/pending'),
+        api.get<ConnectionSummary[]>('/connections')
       ]);
 
-      // The connection endpoints return ids only, so fetch user and bio data to render richer cards.
+      // The list endpoints return relationship ids first, then we hydrate each card with public user details.
       const detailedPending = await Promise.all(
-        pendingRes.data.map(async (req: any) => {
+        pendingRes.data.map(async (req) => {
           try {
-            const userRes = await api.get(`/users/${req.id}`);
-            const bioRes = await api.get(`/users/${req.id}/bio`).catch(() => ({ data: {} }));
+            const userRes = await api.get<UserSummary>(`/users/${req.id}`);
+            const bioRes = await api.get<PublicBio>(`/users/${req.id}/bio`).catch(() => ({ data: {} as PublicBio }));
             return {
               id: req.id,
               connectionId: req.connectionId,
@@ -60,12 +75,11 @@ const Connections: React.FC = () => {
       );
       setPendingRequests(detailedPending);
 
-      // Accepted connections use the same enrichment pattern to keep both tabs visually consistent.
       const detailedActive = await Promise.all(
-        activeRes.data.map(async (conn: any) => {
+        activeRes.data.map(async (conn) => {
           try {
-            const userRes = await api.get(`/users/${conn.id}`);
-            const bioRes = await api.get(`/users/${conn.id}/bio`).catch(() => ({ data: {} }));
+            const userRes = await api.get<UserSummary>(`/users/${conn.id}`);
+            const bioRes = await api.get<PublicBio>(`/users/${conn.id}/bio`).catch(() => ({ data: {} as PublicBio }));
             return {
               id: conn.id,
               name: userRes.data?.name || 'Unknown User',
@@ -79,7 +93,6 @@ const Connections: React.FC = () => {
       );
       setActiveConnections(detailedActive);
       
-      // Surface pending requests first when action is required from the current user.
       if (detailedPending.length > 0) {
         setActiveTab('pending');
       }
@@ -94,8 +107,9 @@ const Connections: React.FC = () => {
   const handleAccept = async (req: ConnectionRequest) => {
     try {
       await api.post(`/connections/${req.connectionId}/accept`);
+
+      // Move the accepted user from the pending list into the active network immediately.
       setPendingRequests(prev => prev.filter(p => p.connectionId !== req.connectionId));
-      // Move the accepted user into the local network list immediately for snappier UX.
       const newActive: ActiveConnection = {
         id: req.id,
         name: req.name,
@@ -179,6 +193,7 @@ const Connections: React.FC = () => {
 
         <div className="min-h-[400px]">
             {activeTab === 'pending' && (
+            /* Incoming requests */
                 <div className="space-y-4">
                     {pendingRequests.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-64 border border-dashed border-zinc-800 rounded-2xl">
@@ -240,6 +255,7 @@ const Connections: React.FC = () => {
             )}
 
             {activeTab === 'accepted' && (
+              /* Accepted connections */
                 <div className="space-y-4">
                     {activeConnections.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-64 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/20">

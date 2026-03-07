@@ -20,8 +20,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/privacy" element={<Privacy />} />
-        
-        {/* Protected Routes wrapped in Layout */}
+
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/setup-bio" element={<SetupBio />} />
@@ -33,7 +32,6 @@ function App() {
           <Route path="/settings" element={<Settings />} />
         </Route>
 
-        {/* 404 catch-all */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>

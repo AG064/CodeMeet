@@ -31,7 +31,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api")
 public class UserController {
-    // Serves current-user and public-profile data while enforcing the profile visibility rules from the task.
     private static final int MIN_BIO_AGE = 13;
     private static final int MAX_BIO_AGE = 120;
     private static final int MIN_RADIUS_KM = 1;
@@ -52,7 +51,7 @@ public class UserController {
         this.connectionRepository = connectionRepository;
         this.recommendationService = recommendationService;
     }
-    // Core identity endpoints used across the app header, profile screens, and recommendation cards.
+
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getCurrentUser(Authentication authentication) {
 
@@ -109,8 +108,6 @@ public class UserController {
         return ResponseEntity.ok(mapToBioDto(bio, canBypassPrivacy(currentUser, targetUser)));
     }
 
-    // Profile endpoints expose the free-text "About Me" content for the authenticated user.
-
     @GetMapping("/me/profile")
     public ResponseEntity<ProfileDto> getMyProfile(Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
@@ -136,8 +133,6 @@ public class UserController {
 
         return ResponseEntity.ok("Profile updated successfully");
     }
-
-    // Bio endpoints expose the structured matching data that powers recommendations.
 
     @GetMapping("/me/bio")
     public ResponseEntity<BioDto> getMyBio(Authentication authentication) {
@@ -204,8 +199,6 @@ public class UserController {
         userRepository.save(user);
         return ResponseEntity.ok("Alias updated successfully");
     }
-
-    // Utility endpoints and helpers keep file upload and visibility logic in one place.
 
     @PostMapping("/me/profile-picture")
     public ResponseEntity<String> uploadProfilePicture(Authentication authentication, @RequestParam("file") MultipartFile file) {

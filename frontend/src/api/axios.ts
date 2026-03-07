@@ -2,11 +2,14 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
+type ApiErrorResponse = {
+  message?: string;
+} | string;
+
 const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// Interceptor to add JWT token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token && token !== 'undefined' && token !== 'null' && config.headers) {
@@ -17,7 +20,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Redirect to login on 401/403 responses (expired or missing token)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -30,5 +32,29 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (axios.isAxiosError<ApiErrorResponse>(error)) {
+    const data = error.response?.data;
+    if (typeof data === 'string' && data.trim().length > 0) {
+      return data;
+    }
+    if (
+      typeof data === 'object' &&
+      data !== null &&
+      'message' in data &&
+      typeof data.message === 'string' &&
+      data.message.trim().length > 0
+    ) {
+      return data.message;
+    }
+  }
+
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return fallback;
+};
 
 export default api;

@@ -54,7 +54,6 @@ const PublicProfile: React.FC = () => {
           api.get(`/users/${id}/profile`).catch(() => ({ data: {} }))
         ]);
 
-        // Keep only public fields on client rendering path.
         setUser({
           id: u.id,
           name: u.name,

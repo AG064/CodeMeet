@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Client } from '@stomp/stompjs';
 import api from '../api/axios';
@@ -45,19 +45,46 @@ type PresenceEvent = {
    lastSeenVisible?: boolean;
 };
 
+type ChatPartnerSummary = {
+   id: string;
+   name: string;
+   unreadCount: number;
+};
+
+type UserSummary = {
+   id: string;
+   name: string;
+   profilePicture?: string;
+   lastSeenAt?: string | null;
+   lastSeenVisible?: boolean;
+};
+
+type PresenceStatus = {
+   online?: boolean;
+   lastSeenAt?: string | null;
+   lastSeenVisible?: boolean;
+};
+
+type PaginatedResponse<T> = {
+   content?: T[];
+};
+
 const sortMessagesAsc = (items: Message[]) => {
    return [...items].sort((a, b) => {
       const dateA = new Date(a.timestamp);
       const dateB = new Date(b.timestamp);
-      // Invalid timestamps are treated as oldest so stable, valid messages remain in the correct order.
-      const ta = isNaN(dateA.getTime()) ? 0 : dateA.getTime();
-      const tb = isNaN(dateB.getTime()) ? 0 : dateB.getTime();
-      
-      if (ta !== tb) return ta - tb;
-      // Use the id as a deterministic tie-breaker when two messages share the same timestamp.
+      const ta = Number.isNaN(dateA.getTime()) ? 0 : dateA.getTime();
+      const tb = Number.isNaN(dateB.getTime()) ? 0 : dateB.getTime();
+
+      if (ta !== tb) {
+         return ta - tb;
+      }
+
       return (a.id || '').localeCompare(b.id || '');
    });
 };
+
+const getRoutePartnerId = () => window.location.pathname.split('/').pop() || '';
 
 const Chat: React.FC = () => {
   const { partnerId } = useParams<{ partnerId: string }>();
@@ -77,10 +104,10 @@ const Chat: React.FC = () => {
    const [blockingPartner, setBlockingPartner] = useState(false);
    const [actionError, setActionError] = useState<string | null>(null);
    const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-  
+
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [activePartnerData, setActivePartnerData] = useState<ChatPartner | null>(null);
-  
+
   const stompClient = useRef<Client | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
    const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -90,8 +117,195 @@ const Chat: React.FC = () => {
    const typingStateRef = useRef(false);
    const lastTypingSentAtRef = useRef(0);
 
+   const loadPartnerData = useCallback(async (targetId: string): Promise<ChatPartner | null> => {
+      try {
+         const detail = await api.get<UserSummary>(`/users/${targetId}`);
+         return {
+            id: detail.data.id,
+            name: detail.data.name,
+            profilePicture: detail.data.profilePicture,
+            unreadCount: 0,
+            online: false,
+            lastSeenAt: detail.data.lastSeenAt || null,
+            lastSeenVisible: detail.data.lastSeenVisible !== false,
+         };
+      } catch {
+         return null;
+      }
+   }, []);
+
+   const fetchChatHistory = useCallback(async (targetId: string) => {
+      try {
+         const res = await api.get<PaginatedResponse<Message>>(`/chat/history/${targetId}?size=50`);
+         const content = Array.isArray(res.data?.content) ? res.data.content : [];
+         setMessages(sortMessagesAsc(content));
+      } catch (error) {
+         console.error('Failed to fetch chat history', error);
+      }
+   }, []);
+
+   const markAsRead = useCallback(async (senderId: string) => {
+      try {
+         await api.post(`/chat/read/${senderId}`);
+         setPartners((prev) => prev.map((partner) => (partner.id === senderId ? { ...partner, unreadCount: 0 } : partner)));
+      } catch {
+         console.warn('Silent fail: unread state logic');
+      }
+   }, []);
+
+   const connectWebSocket = useCallback((userId: string) => {
+      if (stompClient.current) {
+         stompClient.current.deactivate();
+         stompClient.current = null;
+      }
+
+      const token = localStorage.getItem('token');
+      const wsUrl = BACKEND_BASE_URL.replace(/^http/, 'ws') + '/ws';
+
+      const client = new Client({
+         brokerURL: wsUrl,
+         connectHeaders: {
+            Authorization: `Bearer ${token}`,
+         },
+         debug: (message) => {
+            console.log(`STOMP: ${message}`);
+         },
+         reconnectDelay: 5000,
+         onConnect: () => {
+            console.log('STOMP Connected');
+
+            client.subscribe('/user/queue/messages', (msg) => {
+               const incomingMessage: Message = JSON.parse(msg.body);
+
+               setMessages((prevMessages) => {
+                  if (prevMessages.some((message) => message.id === incomingMessage.id)) {
+                     return prevMessages;
+                  }
+
+                  const currentPathId = getRoutePartnerId();
+                  const isRelevant =
+                     (incomingMessage.senderId === currentPathId && incomingMessage.recipientId === userId) ||
+                     (incomingMessage.senderId === userId && incomingMessage.recipientId === currentPathId);
+
+                  return isRelevant ? sortMessagesAsc([...prevMessages, incomingMessage]) : prevMessages;
+               });
+
+               setPartners((prev) => {
+                  const partnerIdToFind = incomingMessage.senderId === userId ? incomingMessage.recipientId : incomingMessage.senderId;
+                  const partnerIndex = prev.findIndex((partner) => partner.id === partnerIdToFind);
+                  const currentActiveId = getRoutePartnerId();
+                  const isTargetingUsAndNotActive = incomingMessage.senderId !== userId && currentActiveId !== partnerIdToFind;
+
+                  if (partnerIndex === -1) {
+                     void loadPartnerData(partnerIdToFind).then((partner) => {
+                        if (!partner) {
+                           return;
+                        }
+
+                        setPartners((existing) => (existing.some((item) => item.id === partner.id) ? existing : [partner, ...existing]));
+                     });
+                     return prev;
+                  }
+
+                  const nextPartners = [...prev];
+                  const [targetPartner] = nextPartners.splice(partnerIndex, 1);
+
+                  if (isTargetingUsAndNotActive) {
+                     targetPartner.unreadCount = (targetPartner.unreadCount || 0) + 1;
+                  } else if (incomingMessage.senderId === partnerIdToFind && currentActiveId === partnerIdToFind) {
+                     void api.post(`/chat/read/${partnerIdToFind}`).catch(() => undefined);
+                  }
+
+                  return [targetPartner, ...nextPartners];
+               });
+            });
+
+            client.subscribe('/user/queue/typing', (msg) => {
+               const typingEvent: TypingEvent = JSON.parse(msg.body);
+               const activePartnerId = getRoutePartnerId();
+
+               if (!activePartnerId || typingEvent.senderId.toLowerCase() !== activePartnerId.toLowerCase()) {
+                  return;
+               }
+
+               setIsPartnerTyping(typingEvent.typing);
+               if (typingIndicatorTimeoutRef.current) {
+                  clearTimeout(typingIndicatorTimeoutRef.current);
+               }
+               if (typingEvent.typing) {
+                  typingIndicatorTimeoutRef.current = setTimeout(() => setIsPartnerTyping(false), TYPING_INDICATOR_HIDE_DELAY_MS);
+               }
+            });
+
+            client.subscribe('/user/queue/presence', (msg) => {
+               const presenceEvent: PresenceEvent = JSON.parse(msg.body);
+               setPartners((prev) =>
+                  prev.map((partner) =>
+                     partner.id === presenceEvent.userId
+                        ? {
+                              ...partner,
+                              online: presenceEvent.online,
+                              lastSeenAt: presenceEvent.lastSeenAt ?? (presenceEvent.lastSeenVisible === false ? null : partner.lastSeenAt),
+                              lastSeenVisible: presenceEvent.lastSeenVisible !== false,
+                           }
+                        : partner,
+                  ),
+               );
+            });
+         },
+         onStompError: (frame) => {
+            console.error(`Broker reported error: ${frame.headers.message}`);
+         },
+      });
+
+      client.activate();
+      stompClient.current = client;
+   }, [loadPartnerData]);
+
+   const fetchInitialData = useCallback(async () => {
+      try {
+         const [userRes, partnersRes] = await Promise.all([
+            api.get<UserSummary>('/me'),
+            api.get<ChatPartnerSummary[]>('/chat/partners'),
+         ]);
+
+         setCurrentUserId(userRes.data.id);
+
+         const enhancedPartners = await Promise.all(
+            partnersRes.data.map(async (partner) => {
+               try {
+                  const detail = await api.get<UserSummary>(`/users/${partner.id}`);
+                  return {
+                     ...partner,
+                     profilePicture: detail.data?.profilePicture,
+                     lastSeenVisible: detail.data?.lastSeenVisible !== false,
+                  };
+               } catch {
+                  return partner;
+               }
+            }),
+         );
+
+         const presenceMapRes = await api.get<Record<string, PresenceStatus>>('/chat/presence').catch(() => ({ data: {} }));
+         const presenceMap = presenceMapRes.data || {};
+
+         const partnersWithPresence = enhancedPartners.map((partner) => ({
+            ...partner,
+            online: Boolean(presenceMap[partner.id]?.online),
+            lastSeenAt: presenceMap[partner.id]?.lastSeenAt || null,
+            lastSeenVisible: presenceMap[partner.id]?.lastSeenVisible !== false && partner.lastSeenVisible !== false,
+         }));
+
+         setPartners(partnersWithPresence);
+         connectWebSocket(userRes.data.id);
+      } catch (error) {
+         console.error('Core chat bootstrap failed', error);
+      }
+   }, [connectWebSocket]);
+
+   // Bootstrap chat data once, then clean up timers and the socket when the page closes.
   useEffect(() => {
-    fetchInitialData();
+      void fetchInitialData();
 
       return () => {
          if (typingTimeoutRef.current) {
@@ -102,9 +316,8 @@ const Chat: React.FC = () => {
          }
          stompClient.current?.deactivate();
       };
-  }, []);
+   }, [fetchInitialData]);
 
-   // Refresh relative last-seen labels periodically so the header and sidebar do not go stale while the page stays open.
    useEffect(() => {
       const id = setInterval(() => {
          setLastSeenTick(Date.now());
@@ -117,7 +330,9 @@ const Chat: React.FC = () => {
       const handleBlocked = (event: Event) => {
          const customEvent = event as CustomEvent<{ id: string; name?: string }>;
          const blockedId = customEvent.detail?.id;
-         if (!blockedId) return;
+         if (!blockedId) {
+            return;
+         }
 
          setPartners((prev) => prev.filter((partner) => partner.id !== blockedId));
 
@@ -136,313 +351,117 @@ const Chat: React.FC = () => {
 
    useEffect(() => {
       if (partnerId && currentUserId) {
-          fetchChatHistory(partnerId);
-          markAsRead(partnerId);
-          setIsPartnerTyping(false);
-      } else {
-          setMessages([]);
-          setIsPartnerTyping(false);
+         void fetchChatHistory(partnerId);
+         void markAsRead(partnerId);
+         setIsPartnerTyping(false);
+         return;
       }
-   }, [partnerId, currentUserId]);
 
-      // Keep the active header data aligned with the selected route and the latest sidebar state.
+      setMessages([]);
+      setIsPartnerTyping(false);
+   }, [currentUserId, fetchChatHistory, markAsRead, partnerId]);
+
+   // Keep the selected conversation details in sync with the sidebar.
    useEffect(() => {
       if (!partnerId) {
          setActivePartnerData(null);
          return;
       }
 
-      // Re-fetch on partner switch so a direct navigation still loads the latest persisted history.
-      fetchChatHistory(partnerId);
-
-      const existingPartner = partners.find((p) => p.id === partnerId);
+      const existingPartner = partners.find((partner) => partner.id === partnerId);
       if (existingPartner) {
          setActivePartnerData(existingPartner);
          return;
       }
-      
-      setupActivePartnerData(partnerId);
-   }, [partnerId, partners]);
 
-   // Always snap to the newest message after the list changes so chat behaves like a messaging app.
-  useEffect(() => {
+      void loadPartnerData(partnerId).then((partner) => {
+         if (!partner) {
+            return;
+         }
+
+         setActivePartnerData(partner);
+         setPartners((prev) => (prev.some((item) => item.id === partner.id) ? prev : [partner, ...prev]));
+      });
+   }, [loadPartnerData, partnerId, partners]);
+
+   useEffect(() => {
       const scrollToLatest = () => {
          if (messagesContainerRef.current) {
             messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
          }
       };
 
-      // Wait one animation frame so the browser has measured the new message heights first.
       requestAnimationFrame(scrollToLatest);
    }, [messages, partnerId]);
 
-  const fetchInitialData = async () => {
-    try {
-      const [userRes, partnersRes] = await Promise.all([
-        api.get('/me'),
-        api.get('/chat/partners')
-      ]);
-      setCurrentUserId(userRes.data.id);
-      
-      // The sidebar endpoint is intentionally light, so individual user fetches fill in avatars for the richer UI.
-      const enhancedPartners = await Promise.all(
-         partnersRes.data.map(async (p: any) => {
-            try {
-               const detail = await api.get(`/users/${p.id}`);
-               return {
-                  ...p,
-                  profilePicture: detail.data?.profilePicture,
-                  lastSeenVisible: detail.data?.lastSeenVisible !== false,
-               };
-            } catch {
-               return p;
-            }
-         })
-      );
-
-         const presenceMapRes = await api.get('/chat/presence').catch(() => ({ data: {} }));
-         const presenceMap = presenceMapRes.data || {};
-
-         const partnersWithPresence = enhancedPartners.map((p: ChatPartner) => ({
-            ...p,
-            online: Boolean(presenceMap[p.id]?.online),
-            lastSeenAt: presenceMap[p.id]?.lastSeenAt || null,
-            lastSeenVisible: presenceMap[p.id]?.lastSeenVisible !== false && p.lastSeenVisible !== false,
-         }));
-
-         setPartners(partnersWithPresence);
-
-      // Open the live socket after the current user id is known so subscriptions can filter correctly.
-      connectWebSocket(userRes.data.id);
-
-    } catch (err) {
-      console.error('Core chat bootstrap failed', err);
-    }
-  };
-
-  const setupActivePartnerData = async (targetId: string) => {
-      let p = partners.find(p => p.id === targetId);
-      if (!p) {
-         try {
-             const detail = await api.get(`/users/${targetId}`);
-             p = {
-                id: detail.data.id,
-                name: detail.data.name,
-                profilePicture: detail.data.profilePicture,
-               unreadCount: 0,
-                      online: false,
-                      lastSeenAt: detail.data.lastSeenAt || null,
-                      lastSeenVisible: detail.data.lastSeenVisible !== false,
-             };
-             // If the chat opened from another page, seed the sidebar with the fetched partner exactly once.
-             setPartners(prev => {
-                if(prev.find(x => x.id === targetId)) return prev;
-                return [p!, ...prev];
-             });
-          } catch {
-             return; // If the target user cannot be loaded, keep the current screen empty instead of showing stale data.
-         }
-      }
-      setActivePartnerData(p || null);
-  };
-
-  const fetchChatHistory = async (targetId: string) => {
-     try {
-       const res = await api.get(`/chat/history/${targetId}?size=50`);
-          const content = Array.isArray(res.data?.content) ? res.data.content : [];
-          setMessages(sortMessagesAsc(content));
-     } catch (err) {
-       console.error('Failed to fetch chat history', err);
-     }
-  };
-
-  const markAsRead = async (senderId: string) => {
-      try {
-         await api.post(`/chat/read/${senderId}`);
-         setPartners(prev => prev.map(p => p.id === senderId ? { ...p, unreadCount: 0 } : p));
-      } catch (err) {
-         console.warn('Silent fail: unread state logic');
-      }
-  };
-
-  const connectWebSocket = (uId: string) => {
-      if (stompClient.current) {
-         stompClient.current.deactivate();
-         stompClient.current = null;
-      }
-
-   // Use the native WebSocket transport because the backend exposes a plain STOMP broker endpoint.
-    const token = localStorage.getItem('token');
-    
-   // Derive the socket origin from the configured backend base URL so local and Docker setups both work.
-    const wsUrl = BACKEND_BASE_URL.replace(/^http/, 'ws') + '/ws';
-    
-    const client = new Client({
-      brokerURL: wsUrl,
-      
-      // Send the JWT during the handshake so the backend can authenticate subscriptions and message sends.
-      connectHeaders: {
-         Authorization: `Bearer ${token}`
-      },
-      // Leave STOMP debug logging enabled to simplify troubleshooting while developing chat flows.
-      debug: (str) => {
-        console.log('STOMP: ' + str);
-      },
-      reconnectDelay: 5000,
-      
-      onConnect: () => {
-         console.log('STOMP Connected');
-         // Each user listens on a private queue for direct messages, typing events, and presence updates.
-         client.subscribe('/user/queue/messages', (msg) => {
-            const incomingMessage: Message = JSON.parse(msg.body);
-            
-            // Only append messages that belong to the currently visible conversation.
-            setMessages((prevMsg) => {
-               if (prevMsg.find(m => m.id === incomingMessage.id)) return prevMsg;
-               
-               // Read the route directly so socket callbacks do not rely on stale React closures.
-               const currentPathId = window.location.pathname.split('/').pop() || '';
-               
-               const isRelevant = 
-                  (incomingMessage.senderId === currentPathId && incomingMessage.recipientId === uId) ||
-                  (incomingMessage.senderId === uId && incomingMessage.recipientId === currentPathId);
-
-               if (isRelevant) {
-                   return sortMessagesAsc([...prevMsg, incomingMessage]);
-               }
-               return prevMsg;
-            });
-
-            // Keep the sidebar sorted by most recent activity and maintain unread counts for inactive chats.
-            setPartners((prev) => {
-               const partnerIdToFind = incomingMessage.senderId === uId ? incomingMessage.recipientId : incomingMessage.senderId;
-               let partnerIndex = prev.findIndex(p => p.id === partnerIdToFind);
-               let currentActiveId = window.location.pathname.split('/').pop() || '';
-               
-               const isTargetingUsAndNotActive = incomingMessage.senderId !== uId && currentActiveId !== partnerIdToFind;
-               
-               if (partnerIndex === -1) {
-                  fetchInitialData(); 
-                  return prev;
-               }
-
-               const pArray = [...prev];
-               const targetPartner = pArray.splice(partnerIndex, 1)[0];
-               
-               if (isTargetingUsAndNotActive) {
-                   targetPartner.unreadCount = (targetPartner.unreadCount || 0) + 1;
-               } else if (incomingMessage.senderId === partnerIdToFind && currentActiveId === partnerIdToFind) {
-                     // Messages visible in the open chat can be marked read immediately without extra user action.
-                   api.post(`/chat/read/${partnerIdToFind}`).catch(() => {});
-               }
-
-                  // Move the active conversation to the top so the sidebar mirrors modern chat apps.
-               return [targetPartner, ...pArray];
-            });
-         });
-
-            client.subscribe('/user/queue/typing', (msg) => {
-                  const typingEvent: TypingEvent = JSON.parse(msg.body);
-                  const activePartnerId = window.location.pathname.split('/').pop() || '';
-                  
-                  // Compare normalized ids defensively so UI state is not tripped up by casing differences.
-                  if (!activePartnerId || typingEvent.senderId.toLowerCase() !== activePartnerId.toLowerCase()) {
-                     return;
-                  }
-
-                  setIsPartnerTyping(typingEvent.typing);
-                  if (typingIndicatorTimeoutRef.current) {
-                     clearTimeout(typingIndicatorTimeoutRef.current);
-                  }
-                  if (typingEvent.typing) {
-                     typingIndicatorTimeoutRef.current = setTimeout(() => setIsPartnerTyping(false), TYPING_INDICATOR_HIDE_DELAY_MS);
-                  }
-             });
-
-            client.subscribe('/user/queue/presence', (msg) => {
-                  const presenceEvent: PresenceEvent = JSON.parse(msg.body);
-                  setPartners((prev) => prev.map((p) => (
-                     p.id === presenceEvent.userId
-                  ? {
-                     ...p,
-                     online: presenceEvent.online,
-                     lastSeenAt: presenceEvent.lastSeenAt ?? (presenceEvent.lastSeenVisible === false ? null : p.lastSeenAt),
-                     lastSeenVisible: presenceEvent.lastSeenVisible !== false,
-                  }
-                        : p
-                  )));
-             });
-      },
-      onStompError: (frame) => {
-        console.error('Broker reported error: ' + frame.headers['message']);
-      },
-    });
-
-    client.activate();
-    stompClient.current = client;
-  };
-
   const handleSendMessage = () => {
-      if (!newMessage.trim() || !partnerId || !currentUserId) return;
+      if (!newMessage.trim() || !partnerId || !currentUserId) {
+         return;
+      }
 
       const chatMessage = {
-          recipientId: partnerId,
-          content: newMessage
+         recipientId: partnerId,
+         content: newMessage,
       };
 
-      if (stompClient.current && stompClient.current.connected) {
+      if (stompClient.current?.connected) {
          stompClient.current.publish({
-            destination: '/app/chat', // Controller MessageMapping
-            body: JSON.stringify(chatMessage)
+            destination: '/app/chat',
+            body: JSON.stringify(chatMessage),
          });
       } else {
-         // Fall back to REST so message sending still works if the socket reconnect is in progress.
-         api.post(`/chat/send/${partnerId}`, { content: newMessage })
+         api.post<Message>(`/chat/send/${partnerId}`, { content: newMessage })
             .then((res) => {
-               // REST responses are inserted locally because they do not round-trip through the socket automatically.
                if (res.data) {
-                  setMessages((prevMsg) => sortMessagesAsc([...prevMsg, res.data]));
+                  setMessages((prevMessages) => sortMessagesAsc([...prevMessages, res.data]));
                }
             })
-            .catch(err => {
-             console.error('Fallback send error', err);
-         });
+            .catch((error) => {
+               console.error('Fallback send error', error);
+            });
       }
 
       setNewMessage('');
-         sendTyping(false);
+      sendTyping(false);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) setPendingFile(file);
+      if (file) {
+         setPendingFile(file);
+      }
       e.target.value = '';
   };
 
   const handleSendAttachment = async () => {
-      if (!pendingFile || !partnerId) return;
+      if (!pendingFile || !partnerId) {
+         return;
+      }
+
       setUploading(true);
       try {
-          const formData = new FormData();
-          formData.append('file', pendingFile);
-          formData.append('content', newMessage.trim() || pendingFile.name);
-          const res = await api.post(`/chat/upload/${partnerId}`, formData, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-          });
-          if (res.data) {
-              setMessages((prev) => sortMessagesAsc([...prev, res.data]));
-          }
-          setPendingFile(null);
-          setNewMessage('');
-      } catch (err) {
-          console.error('Attachment upload failed', err);
+         const formData = new FormData();
+         formData.append('file', pendingFile);
+         formData.append('content', newMessage.trim() || pendingFile.name);
+         const res = await api.post<Message>(`/chat/upload/${partnerId}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+         });
+         if (res.data) {
+            setMessages((prev) => sortMessagesAsc([...prev, res.data]));
+         }
+         setPendingFile(null);
+         setNewMessage('');
+      } catch (error) {
+         console.error('Attachment upload failed', error);
       } finally {
-          setUploading(false);
+         setUploading(false);
       }
   };
 
    const handleBlockPartner = async () => {
-      if (!partnerId || !activePartnerData || blockingPartner) return;
+      if (!partnerId || !activePartnerData || blockingPartner) {
+         return;
+      }
 
       try {
          setBlockingPartner(true);
@@ -450,7 +469,7 @@ const Chat: React.FC = () => {
          setActionSuccess(null);
          await api.post(`/block/${partnerId}`);
          window.dispatchEvent(new CustomEvent('codemeet:user-blocked', {
-            detail: { id: partnerId, name: activePartnerData.name }
+            detail: { id: partnerId, name: activePartnerData.name },
          }));
          setActionSuccess(`${activePartnerData.name} was blocked successfully.`);
          setPartners((prev) => prev.filter((partner) => partner.id !== partnerId));
@@ -461,8 +480,8 @@ const Chat: React.FC = () => {
             setIsPartnerTyping(false);
             navigate('/chat');
          }, 1200);
-      } catch (err) {
-         console.error('Failed to block user', err);
+      } catch (error) {
+         console.error('Failed to block user', error);
          setActionError('Could not block this user right now.');
       } finally {
          setBlockingPartner(false);
@@ -474,6 +493,7 @@ const Chat: React.FC = () => {
          return;
       }
 
+      // Throttle repeated "typing=true" events so we do not publish on every keystroke.
       const now = Date.now();
       const isDuplicateTrue =
          typing &&
@@ -488,7 +508,7 @@ const Chat: React.FC = () => {
       lastTypingSentAtRef.current = now;
       stompClient.current.publish({
          destination: '/app/chat/typing',
-         body: JSON.stringify({ recipientId: partnerId, typing })
+         body: JSON.stringify({ recipientId: partnerId, typing }),
       });
    };
 
@@ -504,12 +524,13 @@ const Chat: React.FC = () => {
             clearTimeout(typingTimeoutRef.current);
          }
          typingTimeoutRef.current = setTimeout(() => sendTyping(false), TYPING_IDLE_TIMEOUT_MS);
-      } else {
-         if (typingTimeoutRef.current) {
-            clearTimeout(typingTimeoutRef.current);
-         }
-         sendTyping(false);
+         return;
       }
+
+      if (typingTimeoutRef.current) {
+         clearTimeout(typingTimeoutRef.current);
+      }
+      sendTyping(false);
    };
 
    const formatLastSeen = (lastSeenAt?: string | null) => {
@@ -553,12 +574,12 @@ const Chat: React.FC = () => {
 
    const filteredMessages = searchQuery.trim().length === 0
       ? messages
-      : messages.filter((m) => m.content.toLowerCase().includes(searchQuery.toLowerCase()));
+      : messages.filter((message) => message.content.toLowerCase().includes(searchQuery.toLowerCase()));
 
    return (
       <div className="flex h-full min-h-0 w-full bg-transparent rounded-3xl shadow-2xl border border-white/5 animate-fade-in relative backdrop-blur-sm">
-      
-      {/* Sidebar: Chat Channels */}
+
+      {/* Conversation list */}
       <div className={`w-full md:w-80 min-h-0 flex-shrink-0 bg-zinc-900/60 border-r border-white/5 flex flex-col backdrop-blur-xl z-20 ${partnerId ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-6 border-b border-white/5 flex justify-between items-center">
             <h2 className="text-lg font-bold text-zinc-100 tracking-tight">Messages</h2>
@@ -630,11 +651,9 @@ const Chat: React.FC = () => {
                                 <span className="opacity-50"><IconUser className="w-6 h-6" /></span>
                              )}
                          </div>
-                         {/* Online Status Dot */}
                          {p.online && (
                             <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-zinc-900 rounded-full z-10 shadow-sm shadow-emerald-500/20"></div>
                          )}
-                         {/* Unread Counter Badge */}
                          {p.unreadCount > 0 && (
                             <div className="absolute -top-1 -right-1 bg-indigo-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full z-10 shadow-lg shadow-indigo-500/30 border border-zinc-900">
                                {p.unreadCount}
@@ -656,9 +675,8 @@ const Chat: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Panel: Chat Window */}
+         {/* Active conversation */}
       <div className={`flex-1 min-h-0 flex flex-col bg-zinc-900/30 relative overflow-hidden ${!partnerId ? 'hidden md:flex' : 'flex'}`}>
-         {/* Decorative Gradients */}
          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
          <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/5 rounded-full blur-3xl pointer-events-none translate-y-1/2 -translate-x-1/2"></div>
 
@@ -686,7 +704,6 @@ const Chat: React.FC = () => {
               </div>
           ) : (
              <>
-                {/* Chat Header */}
                 <div className="h-20 px-6 border-b border-white/5 flex shrink-0 items-center justify-between backdrop-blur-md bg-zinc-900/40 z-20">
                     <div className="flex items-center gap-4">
                        <button
@@ -757,7 +774,6 @@ const Chat: React.FC = () => {
                            </div>
                         )}
 
-                {/* Messages Feed */}
                 <div ref={messagesContainerRef} className="flex-1 min-h-0 p-6 overflow-y-auto custom-scrollbar scroll-smooth flex flex-col z-10">
                   {filteredMessages.length === 0 ? (
                         <div className="flex-1 flex flex-col items-center justify-center opacity-40">
@@ -852,7 +868,6 @@ const Chat: React.FC = () => {
                     )}
                 </div>
 
-                {/* Message Input Input */}
                 {pendingFile && (
                     <div className="px-5 py-2 bg-zinc-900/80 border-t border-white/5 flex items-center gap-2">
                        <IconPaperclip className="w-4 h-4 text-indigo-400 shrink-0" />
@@ -863,6 +878,7 @@ const Chat: React.FC = () => {
                     </div>
                 )}
 
+                {/* Message composer */}
                 <div className="p-5 bg-zinc-900/60 backdrop-blur-xl border-t border-white/5 flex shrink-0 gap-3 w-full z-20 items-end">
                     <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
                     <button

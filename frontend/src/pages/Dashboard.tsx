@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios';
+import api, { getApiErrorMessage } from '../api/axios';
 import FeedbackBanner from '../components/FeedbackBanner.tsx';
 import { IconCamera, IconCode, IconChart, IconTarget, IconLaptop, IconMapPin, IconWarning, IconSearch, IconNetwork, IconMessage, IconCheck, IconUser, IconMore } from '../components/Icons';
 import { toHandle } from '../utils/handle';
@@ -25,8 +25,18 @@ type FeedbackState = {
     message: string;
 };
 
+type CurrentUser = {
+    id: string;
+    name: string;
+    profilePicture?: string | null;
+};
+
+type ProfileResponse = {
+    aboutMe?: string;
+};
+
 const Dashboard: React.FC = () => {
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<CurrentUser | null>(null);
     const [bio, setBio] = useState<Bio | null>(null);
     const [aboutMe, setAboutMe] = useState('');
     const [uploading, setUploading] = useState(false);
@@ -37,7 +47,7 @@ const Dashboard: React.FC = () => {
     const navigate = useNavigate();
 
     const refreshCurrentUser = async () => {
-        const userRes = await api.get('/me');
+        const userRes = await api.get<CurrentUser>('/me');
         setUser(userRes.data);
         setAliasInput(userRes.data?.name || '');
     };
@@ -45,6 +55,7 @@ const Dashboard: React.FC = () => {
     const calculateCompletion = (bioData: Bio | null): number => {
         if (!bioData) return 0;
 
+        // Location counts as one completed profile item only when all three location fields are present.
         const hasLocationConfigured = bioData.latitude != null && bioData.longitude != null && bioData.maxDistanceKm != null;
 
         const values = [
@@ -66,29 +77,29 @@ const Dashboard: React.FC = () => {
     const stroke = 8;
     const radius = (ringSize - stroke) / 2;
     const circumference = 2 * Math.PI * radius;
+    // SVG progress rings are drawn with stroke length, so a smaller offset shows more completion.
     const dashOffset = circumference * (1 - completion / 100);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const userRes = await api.get('/me');
+                const userRes = await api.get<CurrentUser>('/me');
                 setUser(userRes.data);
                 setAliasInput(userRes.data?.name || '');
                 
                 try {
-                    const bioRes = await api.get('/me/bio');
+                    const bioRes = await api.get<Bio>('/me/bio');
                     setBio(bioRes.data);
-                } catch (e) {
-                    // Bio probably doesn't exist yet
+                } catch {
+                    // Bio is optional for new accounts.
                 }
                 try {
-                    const profileRes = await api.get('/me/profile');
+                    const profileRes = await api.get<ProfileResponse>('/me/profile');
                     setAboutMe(profileRes.data?.aboutMe || '');
-                } catch (e) {
-                    // Profile probably doesn't exist yet
+                } catch {
+                    // Profile text is optional.
                 }
-            } catch (err) {
-                // If 401/403, redirect to login
+            } catch {
                 navigate('/login');
             }
         };
@@ -107,11 +118,10 @@ const Dashboard: React.FC = () => {
             await refreshCurrentUser();
             setAliasInput(trimmed);
             setFeedback({ variant: 'success', message: 'Alias updated successfully.' });
-        } catch (err: any) {
-            const backendMessage = err.response?.data?.message || err.response?.data;
+        } catch (error: unknown) {
             setFeedback({
                 variant: 'error',
-                message: typeof backendMessage === 'string' ? backendMessage : 'Could not update your alias right now.'
+                message: getApiErrorMessage(error, 'Could not update your alias right now.')
             });
         }
     };
@@ -134,10 +144,10 @@ const Dashboard: React.FC = () => {
             });
             setFeedback({ variant: 'success', message: 'Avatar updated successfully.' });
             await refreshCurrentUser();
-        } catch (err: any) {
+        } catch (error: unknown) {
             setFeedback({
                 variant: 'error',
-                message: err.response?.data?.message || err.message || 'Could not upload your avatar right now.'
+                message: getApiErrorMessage(error, 'Could not upload your avatar right now.')
             });
         } finally {
             setUploading(false);
@@ -157,10 +167,10 @@ const Dashboard: React.FC = () => {
             await refreshCurrentUser();
             setFeedback({ variant: 'success', message: 'Avatar removed successfully.' });
             setIsProfileMenuOpen(false);
-        } catch (err: any) {
+        } catch (error: unknown) {
             setFeedback({
                 variant: 'error',
-                message: err.response?.data?.message || err.message || 'Could not remove your avatar right now.'
+                message: getApiErrorMessage(error, 'Could not remove your avatar right now.')
             });
         } finally {
             setRemovingPicture(false);
@@ -185,7 +195,7 @@ const Dashboard: React.FC = () => {
              </div>
 
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                 {/* Identity Card */}
+                 {/* Identity card */}
                  <div className="cyber-card p-8 lg:col-span-1 flex flex-col items-center text-center relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
@@ -289,7 +299,7 @@ const Dashboard: React.FC = () => {
                     </div>
                  </div>
 
-                 {/* Bio & Stats */}
+                 {/* Bio summary and completion meter */}
                  <div className="cyber-card p-8 lg:col-span-2 flex flex-col justify-between relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
                     
@@ -377,7 +387,7 @@ const Dashboard: React.FC = () => {
                  </div>
              </div>
 
-             {/* Quick Actions Grid */}
+             {/* Shortcut actions */}
              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                  <div onClick={() => navigate('/matches')} className="cyber-card p-6 cursor-pointer group hover:bg-indigo-900/10">
                     <div className="w-12 h-12 rounded-xl bg-zinc-800 text-2xl flex items-center justify-center mb-4 text-indigo-400 group-hover:scale-110 transition-transform"><IconSearch className="w-6 h-6" /></div>

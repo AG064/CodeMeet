@@ -10,7 +10,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class PresenceService {
 
+    // One websocket session id maps to one user id.
     private final Map<String, String> sessionToUser = new ConcurrentHashMap<>();
+    // A user stays online while they still have at least one active session.
     private final Map<String, Integer> sessionsPerUser = new ConcurrentHashMap<>();
 
     public boolean registerSession(String sessionId, String userId) {
@@ -20,6 +22,7 @@ public class PresenceService {
         sessionToUser.put(sessionId, userId);
         int prev = sessionsPerUser.getOrDefault(userId, 0);
         sessionsPerUser.put(userId, prev + 1);
+        // Returns true when this session changed the user from offline to online.
         return prev == 0;
     }
 
@@ -36,6 +39,7 @@ public class PresenceService {
         Integer prev = sessionsPerUser.get(userId);
         if (prev == null || prev <= 1) {
             sessionsPerUser.remove(userId);
+            // This signals the websocket layer that it should broadcast an offline event.
             return new PresenceChange(userId, true);
         }
 

@@ -19,24 +19,22 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // Topic prefix for users to subscribe to (e.g. /topic/messages)
+        // Clients send app commands to /app, while updates are delivered on /topic or user-specific queues.
         config.enableSimpleBroker("/queue", "/topic");
-        // Prefix for application endpoints (e.g. sending a message via /app/chat)
         config.setApplicationDestinationPrefixes("/app");
-        // Used to send messages to specific users
         config.setUserDestinationPrefix("/user");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // The endpoint clients will connect to
-        // Standard WebSocket endpoint (no SockJS)
+        // The frontend opens its STOMP websocket connection here before subscribing to queues/topics.
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*");
     }
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
+        // Authenticate CONNECT frames before chat controllers handle any user traffic.
         registration.interceptors(webSocketAuthChannelInterceptor);
     }
 }

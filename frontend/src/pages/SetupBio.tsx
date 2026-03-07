@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios';
+import api, { getApiErrorMessage } from '../api/axios';
 import FeedbackBanner from '../components/FeedbackBanner.tsx';
 
 type BioForm = {
@@ -75,6 +75,7 @@ const SetupBio: React.FC = () => {
   const stroke = 8;
   const radius = (ringSize - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
+  // The ring uses the remaining stroke length, not the completed percentage directly.
   const dashOffset = circumference * (1 - completion / 100);
 
   useEffect(() => {
@@ -85,6 +86,7 @@ const SetupBio: React.FC = () => {
     }
 
     const preloadBio = async () => {
+      // Load saved bio and profile text so the form works for both first-time setup and later edits.
       try {
         const res = await api.get('/me/bio');
         setForm({
@@ -99,13 +101,13 @@ const SetupBio: React.FC = () => {
           age: res.data?.age != null ? String(res.data.age) : '',
         });
       } catch {
-        // No existing bio yet is fine; keep defaults.
+        // Missing bio is expected for first-time setup.
       }
       try {
         const profileRes = await api.get('/me/profile');
         setAboutMe(profileRes.data?.aboutMe || '');
       } catch {
-        // No profile yet
+        // Missing profile text is valid for first-time setup.
       }
       setLoading(false);
     };
@@ -121,20 +123,19 @@ const SetupBio: React.FC = () => {
   const onSelectOption = (field: keyof BioForm, option: string) => {
     const current = splitCsv(form[field]);
     let next: string[];
-    
-    // Single select for experience level
+
+    // Experience is single-choice; the other chip groups allow up to three selections.
     if (field === 'experienceLevel') {
-        next = [option];
+      next = [option];
     } else {
-        // Multi select for others
-        if (current.includes(option)) {
-            next = current.filter(i => i !== option);
-        } else {
-            if (current.length >= 3) return; // Max 3
-            next = [...current, option];
-        }
+      if (current.includes(option)) {
+        next = current.filter(i => i !== option);
+      } else {
+        if (current.length >= 3) return;
+        next = [...current, option];
+      }
     }
-    
+
     onChange(field, toCsv(next));
   };
 
@@ -208,6 +209,7 @@ const SetupBio: React.FC = () => {
       return;
     }
 
+    // Browser geolocation fills the coordinate fields and provides a default radius if none was chosen yet.
     setLocating(true);
     setGpsStatus('Requesting your current coordinates...');
 
@@ -261,16 +263,18 @@ const SetupBio: React.FC = () => {
       await api.post('/me/profile', { aboutMe });
       setSuccess('Profile updated successfully');
       setTimeout(() => navigate('/dashboard'), 800);
-    } catch (err: any) {
-      if (err?.response?.status === 401 || err?.response?.status === 403) {
+    } catch (error: unknown) {
+      const status = typeof error === 'object' && error !== null && 'response' in error
+        ? (error as { response?: { status?: number } }).response?.status
+        : undefined;
+
+      if (status === 401 || status === 403) {
         localStorage.removeItem('token');
         navigate('/login');
         return;
       }
-      const backendMessage = typeof err?.response?.data === 'string'
-        ? err.response.data
-        : err?.response?.data?.message;
-      setError(backendMessage || 'Failed to save');
+
+      setError(getApiErrorMessage(error, 'Failed to save'));
     } finally {
       setSaving(false);
     }
@@ -327,9 +331,9 @@ const SetupBio: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column: Form */}
-          <div className="lg:col-span-2 space-y-6">
-              <div className="glass-panel p-6 rounded-2xl border border-white/5 relative overflow-hidden">
+        {/* Editable bio form */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="glass-panel p-6 rounded-2xl border border-white/5 relative overflow-hidden">
                 <div className="space-y-4">
                   {error && <FeedbackBanner variant="error">{error}</FeedbackBanner>}
                   {success && <FeedbackBanner variant="success">{success}</FeedbackBanner>}
@@ -455,10 +459,10 @@ const SetupBio: React.FC = () => {
               </div>
           </div>
 
-          {/* Right Column: Status + Actions */}
-          <div className="lg:col-span-1">
-             <div className="sticky top-6 space-y-4">
-             <div className="glass-panel p-6 rounded-2xl border border-white/5 text-center">
+        {/* Live completion summary */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-6 space-y-4">
+            <div className="glass-panel p-6 rounded-2xl border border-white/5 text-center">
                  <div className="relative inline-flex items-center justify-center p-4">
                     <svg width={ringSize} height={ringSize} className="-rotate-90">
                         <circle
@@ -500,7 +504,6 @@ const SetupBio: React.FC = () => {
                  </div>
              </div>
 
-             {/* Save / Cancel */}
              <div className="glass-panel p-4 rounded-2xl border border-white/5 flex flex-col gap-2">
                 <button
                     type="submit"

@@ -17,10 +17,9 @@ import java.util.Collections;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    // Reads bearer tokens from incoming requests and hydrates Spring Security with the authenticated user.
     private final JwtService jwtService;
 
-    public JwtAuthenticationFilter (JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService) {
         this.jwtService = jwtService;
     }
 
@@ -31,23 +30,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         FilterChain filterChain
     ) throws ServletException, IOException {
 
+        // Read the bearer token from the standard Authorization header.
         final String authHeader = request.getHeader("Authorization");
 
-        // Public routes can continue without a token; protected routes will still be enforced later by SecurityConfig.
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        final String jwt = authHeader.substring(7); // Strip the standard bearer prefix before validating the token.
+        final String jwt = authHeader.substring(7);
 
         try {
+            // Extract identity from the token before we build the Spring Security authentication object.
             final String userEmail = jwtService.extractEmail(jwt);
 
-        // Avoid rebuilding the authentication object when another filter has already authenticated the request.
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 if (jwtService.isTokenValid(jwt)) {
-                    // Mirror the role embedded in the JWT so authorization checks can use ROLE_* authorities.
                     String role = jwtService.extractRole(jwt);
 
                     SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
@@ -57,14 +55,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
 
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    // Once stored in the security context, controllers can treat this request as authenticated.
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
         } catch (Exception e) {
-            // Invalid or expired tokens are ignored here so the request can fail naturally on protected endpoints.
         }
         filterChain.doFilter(request, response);
     }
-
-
 }

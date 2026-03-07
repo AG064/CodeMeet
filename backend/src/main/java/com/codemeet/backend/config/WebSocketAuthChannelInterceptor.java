@@ -25,6 +25,7 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
             return message;
         }
 
+        // We only need to authenticate the initial CONNECT frame; later messages reuse that user principal.
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
             String authHeader = accessor.getFirstNativeHeader("Authorization");
             if (authHeader == null) {
@@ -36,11 +37,11 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
                     if (jwtService.isTokenValid(token)) {
                         String userId = jwtService.extractUserId(token);
                         if (userId != null && !userId.isBlank()) {
+                            // The websocket session now carries the same identity the REST API uses.
                             accessor.setUser(new StompPrincipal(userId));
                         }
                     }
                 } catch (Exception e) {
-                    // Token invalid or expired - ignore, let connection proceed anonymously or fail later
                 }
             }
         }

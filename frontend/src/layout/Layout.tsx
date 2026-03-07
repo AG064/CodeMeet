@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { Client } from '@stomp/stompjs';
 import api from '../api/axios';
@@ -19,9 +19,25 @@ type CurrentUser = {
   profilePicture?: string;
 };
 
+type PendingConnectionSummary = {
+  id: string;
+  connectionId: string;
+};
+
+type ChatPartnerSummary = {
+  id: string;
+  name: string;
+  unreadCount: number;
+};
+
+type PublicUserSummary = {
+  name?: string;
+};
+
 const BG_KEY = 'bgPreference';
 
-/** Renders the content-area background based on the saved preference */
+const isAuthRoute = (pathname: string) => ['/login', '/register'].includes(pathname);
+
 const BackgroundPattern: React.FC = () => {
   const [, forceUpdate] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -34,21 +50,37 @@ const BackgroundPattern: React.FC = () => {
   }, []);
 
   let pref: string | { type: string; url: string };
-  try { pref = JSON.parse(localStorage.getItem(BG_KEY) || '"dots"'); } catch { pref = 'dots'; }
+  try {
+    pref = JSON.parse(localStorage.getItem(BG_KEY) || '"dots"');
+  } catch {
+    pref = 'dots';
+  }
 
-  // Canvas-based effects: matrix & starfield
   const isMatrix = typeof pref === 'string' && pref === 'matrix';
   const isStarfield = typeof pref === 'string' && pref === 'starfield';
   const isCanvas = isMatrix || isStarfield;
 
   useEffect(() => {
-    if (!isCanvas) { cancelAnimationFrame(animFrameRef.current); return; }
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!isCanvas) {
+      cancelAnimationFrame(animFrameRef.current);
+      return;
+    }
 
-    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return;
+    }
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    };
+
     resize();
     window.addEventListener('resize', resize);
 
@@ -61,16 +93,18 @@ const BackgroundPattern: React.FC = () => {
       let last = 0;
       const draw = (time: number) => {
         animFrameRef.current = requestAnimationFrame(draw);
-        if (time - last < 50) return;
-        last = time;
+        if (time - last < 50) {
+          return;
+        }
 
+        last = time;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         ctx.fillStyle = 'rgba(99, 102, 241, 0.6)';
         ctx.font = `${fontSize}px monospace`;
 
-        for (let i = 0; i < drops.length; i++) {
+        for (let i = 0; i < drops.length; i += 1) {
           const char = chars[Math.floor(Math.random() * chars.length)];
           ctx.fillText(char, i * fontSize, drops[i] * fontSize);
           if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
@@ -79,21 +113,22 @@ const BackgroundPattern: React.FC = () => {
           drops[i] += 0.5;
         }
       };
+
       animFrameRef.current = requestAnimationFrame(draw);
     }
 
     if (isStarfield) {
-      // Generate random stars, each with its own position, size, phase, and speed
       const STAR_COUNT = 180;
-      type Star = { x: number; y: number; r: number; phase: number; speed: number; };
+      type Star = { x: number; y: number; r: number; phase: number; speed: number };
+
       const stars: Star[] = [];
-      for (let i = 0; i < STAR_COUNT; i++) {
+      for (let i = 0; i < STAR_COUNT; i += 1) {
         stars.push({
           x: Math.random(),
           y: Math.random(),
           r: 0.5 + Math.random() * 1.8,
           phase: Math.random() * Math.PI * 2,
-          speed: 0.3 + Math.random() * 1.2, // each star twinkles at its own rate
+          speed: 0.3 + Math.random() * 1.2,
         });
       }
 
@@ -104,7 +139,6 @@ const BackgroundPattern: React.FC = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         for (const star of stars) {
-          // Independent sine-wave brightness per star
           const brightness = 0.15 + 0.85 * ((Math.sin(t * star.speed + star.phase) + 1) / 2);
           ctx.beginPath();
           ctx.arc(star.x * canvas.width, star.y * canvas.height, star.r, 0, Math.PI * 2);
@@ -112,6 +146,7 @@ const BackgroundPattern: React.FC = () => {
           ctx.fill();
         }
       };
+
       animFrameRef.current = requestAnimationFrame(draw);
     }
 
@@ -123,10 +158,9 @@ const BackgroundPattern: React.FC = () => {
 
   if (isCanvas) {
     const opacity = isStarfield ? 'opacity-[0.5]' : 'opacity-[0.35]';
-    return <canvas ref={canvasRef} className={`absolute inset-0 w-full h-full pointer-events-none ${opacity}`} />;
+    return <canvas ref={canvasRef} className={`absolute inset-0 h-full w-full pointer-events-none ${opacity}`} />;
   }
 
-  // Custom uploaded image
   if (typeof pref === 'object' && pref?.type === 'image') {
     return (
       <div
@@ -136,7 +170,6 @@ const BackgroundPattern: React.FC = () => {
     );
   }
 
-  // Pattern presets
   const classMap: Record<string, string> = {
     dots: 'bg-pattern-dots',
     grid: 'bg-pattern-grid',
@@ -148,14 +181,14 @@ const BackgroundPattern: React.FC = () => {
   };
 
   const cls = classMap[pref as string];
-  if (!cls) return null; // "none" = no pattern
+  if (!cls) {
+    return null;
+  }
 
   const isMesh = pref === 'mesh';
   const isAnimated = ['aurora', 'pulse', 'waves'].includes(pref as string);
   const opacityClass = isAnimated ? 'opacity-[0.15]' : isMesh ? 'opacity-[0.12]' : 'opacity-[0.06]';
-  return (
-    <div className={`absolute inset-0 pointer-events-none ${cls} ${opacityClass}`} />
-  );
+  return <div className={`absolute inset-0 pointer-events-none ${cls} ${opacityClass}`} />;
 };
 
 const Layout: React.FC = () => {
@@ -167,101 +200,120 @@ const Layout: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const stompClient = useRef<Client | null>(null);
 
-  const fetchNotifications = async () => {
+  const fetchCurrentUserData = useCallback(async (): Promise<CurrentUser | null> => {
     try {
-      // Fetch pending connection requests
-      const { data: pending } = await api.get('/connections/pending');
-      
-      // Fetch chat partners for unread messages
-      const { data: chats } = await api.get('/chat/partners');
-      const unreadChats = chats.filter((c: any) => c.unreadCount > 0);
-      
-      let notifs: Notification[] = [];
-      
-      // Resolve requester details for pretty notifications
-      await Promise.all(pending.map(async (req: any) => {
-        try {
-          const { data: user } = await api.get(`/users/${req.id}`);
-          notifs.push({
-            id: req.connectionId,
-            type: 'connection_request',
-            title: 'New Connection Request',
-            text: `${user.name} wants to connect with you.`
-          });
-        } catch(e) {
-          console.error(e);
-        }
-      }));
-      
+      const { data } = await api.get<CurrentUser>('/me');
+      return data;
+    } catch (error) {
+      console.error('Failed to load user', error);
+      return null;
+    }
+  }, []);
+
+  const fetchNotificationsData = useCallback(async (): Promise<Notification[]> => {
+    try {
+      const [{ data: pending }, { data: chats }] = await Promise.all([
+        api.get<PendingConnectionSummary[]>('/connections/pending'),
+        api.get<ChatPartnerSummary[]>('/chat/partners'),
+      ]);
+
+      const unreadChats = chats.filter((chat) => chat.unreadCount > 0);
+      const nextNotifications: Notification[] = [];
+
+      await Promise.all(
+        pending.map(async (req) => {
+          try {
+            const { data: user } = await api.get<PublicUserSummary>(`/users/${req.id}`);
+            nextNotifications.push({
+              id: req.connectionId,
+              type: 'connection_request',
+              title: 'New Connection Request',
+              text: `${user.name || 'Someone'} wants to connect with you.`,
+            });
+          } catch (error) {
+            console.error(error);
+          }
+        }),
+      );
+
       for (const chat of unreadChats) {
-        notifs.push({
+        nextNotifications.push({
           id: `chat-${chat.id}`,
           type: 'unread_message',
           title: 'New Message',
-          text: `You have ${chat.unreadCount} unread message(s) from ${chat.name}.`
+          text: `You have ${chat.unreadCount} unread message(s) from ${chat.name}.`,
         });
       }
-      
-      setNotifications(notifs);
-      setUnreadCount(notifs.length);
 
-    } catch (e) {
-      console.error('Failed to load notifications', e);
+      return nextNotifications;
+    } catch (error) {
+      console.error('Failed to load notifications', error);
+      return [];
     }
-  };
+  }, []);
 
-  const fetchCurrentUser = async () => {
-    try {
-      const { data } = await api.get('/me');
-      setCurrentUser(data);
-    } catch (e) {
-      console.error('Failed to load user', e);
-    }
-  };
+  const refreshNotifications = useCallback(async () => {
+    const nextNotifications = await fetchNotificationsData();
+    setNotifications(nextNotifications);
+    setUnreadCount(nextNotifications.length);
+  }, [fetchNotificationsData]);
 
   useEffect(() => {
-    if (['/login', '/register'].includes(location.pathname)) return;
+    if (isAuthRoute(location.pathname)) {
+      return undefined;
+    }
 
     const token = localStorage.getItem('token');
     if (!token || token === 'undefined' || token === 'null') {
       localStorage.removeItem('token');
       navigate('/login', { replace: true });
-      return;
+      return undefined;
     }
 
-    fetchCurrentUser();
-    fetchNotifications();
-    
-    // Connect WebSocket to listen to events
+    let cancelled = false;
     const wsUrl = BACKEND_BASE_URL.replace(/^http/, 'ws') + '/ws';
-    
     const client = new Client({
       brokerURL: wsUrl,
       connectHeaders: { Authorization: `Bearer ${token}` },
       reconnectDelay: 5000,
       onConnect: () => {
-         // Listen for incoming messages to trigger a notification refresh
-         client.subscribe('/user/queue/messages', () => {
-            fetchNotifications();
-         });
-         
-         // Listen for connection requests to trigger a notification refresh
-         client.subscribe('/user/queue/notifications', () => {
-            fetchNotifications();
-         });
+        client.subscribe('/user/queue/messages', () => {
+          void refreshNotifications();
+        });
+
+        client.subscribe('/user/queue/notifications', () => {
+          void refreshNotifications();
+        });
       },
-      onStompError: (err) => console.error('Layout WS Error:', err)
+      onStompError: (error) => console.error('Layout WS Error:', error),
     });
-    
-    client.activate();
+
     stompClient.current = client;
-    
+
+    void (async () => {
+      const [user, nextNotifications] = await Promise.all([
+        fetchCurrentUserData(),
+        fetchNotificationsData(),
+      ]);
+
+      if (cancelled) {
+        return;
+      }
+
+      setCurrentUser(user);
+      setNotifications(nextNotifications);
+      setUnreadCount(nextNotifications.length);
+      client.activate();
+    })();
+
     return () => {
-       if (stompClient.current) {
-          stompClient.current.deactivate();
-       }
+      cancelled = true;
+      client.deactivate();
+      if (stompClient.current === client) {
+        stompClient.current = null;
+      }
     };
-  }, [location.pathname]);
+  }, [fetchCurrentUserData, fetchNotificationsData, location.pathname, navigate, refreshNotifications]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -269,158 +321,152 @@ const Layout: React.FC = () => {
   };
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: <IconHome className="w-5 h-5" /> },
-    { path: '/matches', label: 'Discover', icon: <IconSearch className="w-5 h-5" /> },
-    { path: '/connections', label: 'Network', icon: <IconNetwork className="w-5 h-5" /> },
-    { path: '/chat', label: 'Comms', icon: <IconMessage className="w-5 h-5" /> },
-    { path: '/setup-bio', label: 'Identity', icon: <IconUser className="w-5 h-5" /> },
-    { path: '/settings', label: 'Settings', icon: <IconGear className="w-5 h-5" /> },
+    { path: '/dashboard', label: 'Dashboard', icon: <IconHome className="h-5 w-5" /> },
+    { path: '/matches', label: 'Discover', icon: <IconSearch className="h-5 w-5" /> },
+    { path: '/connections', label: 'Network', icon: <IconNetwork className="h-5 w-5" /> },
+    { path: '/chat', label: 'Comms', icon: <IconMessage className="h-5 w-5" /> },
+    { path: '/setup-bio', label: 'Identity', icon: <IconUser className="h-5 w-5" /> },
+    { path: '/settings', label: 'Settings', icon: <IconGear className="h-5 w-5" /> },
   ];
 
-  // Don't show layout on auth pages
-  if (['/login', '/register'].includes(location.pathname)) {
+  if (isAuthRoute(location.pathname)) {
     return <Outlet />;
   }
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-200 font-sans selection:bg-indigo-500/30">
-      
-      {/* Sidebar Navigation */}
-      <aside className="hidden md:flex w-20 lg:w-64 flex-shrink-0 flex-col border-r border-white/5 bg-zinc-900/30 backdrop-blur-md z-50 transition-all duration-300">
-        <div className="h-20 flex items-center justify-center lg:justify-start lg:px-8 border-b border-white/5">
-          <div className="h-10 w-10 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-bold">
+    <div className="flex h-screen bg-zinc-950 font-sans text-zinc-200 selection:bg-indigo-500/30">
+      <aside className="z-50 hidden w-20 flex-shrink-0 flex-col border-r border-white/5 bg-zinc-900/30 backdrop-blur-md transition-all duration-300 md:flex lg:w-64">
+        <div className="flex h-20 items-center justify-center border-b border-white/5 lg:justify-start lg:px-8">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500 font-bold text-white shadow-lg shadow-indigo-500/20">
             C
           </div>
-          <span className="ml-3 font-bold text-xl tracking-wide hidden lg:block bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+          <span className="ml-3 hidden bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-xl font-bold tracking-wide text-transparent lg:block">
             CodeMeet
           </span>
         </div>
 
-        <nav className="flex-1 py-6 px-3 space-y-2">
+        <nav className="flex-1 space-y-2 px-3 py-6">
           {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) =>
-                `nav-item group relative ${isActive ? 'active' : ''}`
-              }
+              className={({ isActive }) => `nav-item group relative ${isActive ? 'active' : ''}`}
             >
-              <span className="text-xl relative z-10 group-hover:scale-110 transition-transform duration-200">
+              <span className="relative z-10 text-xl transition-transform duration-200 group-hover:scale-110">
                 {item.icon}
               </span>
-              <span className="hidden lg:block font-medium tracking-wide">
-                {item.label}
-              </span>
-              {/* Hover Glow Effect */}
-              <div className="absolute inset-0 bg-indigo-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <span className="hidden font-medium tracking-wide lg:block">{item.label}</span>
+              <div className="absolute inset-0 rounded-xl bg-indigo-500/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-white/5">
-          <button 
+        <div className="border-t border-white/5 p-4">
+          <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center lg:justify-start gap-3 px-4 py-3 text-red-400/80 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-200 group"
+            className="group flex w-full items-center justify-center gap-3 rounded-xl px-4 py-3 text-red-400/80 transition-all duration-200 hover:bg-red-500/10 hover:text-red-400 lg:justify-start"
           >
-            <span className="text-xl group-hover:rotate-180 transition-transform duration-500"><IconLogout className="w-5 h-5" /></span>
-            <span className="hidden lg:block font-medium">Disconnect</span>
+            <span className="text-xl transition-transform duration-500 group-hover:rotate-180"><IconLogout className="h-5 w-5" /></span>
+            <span className="hidden font-medium lg:block">Disconnect</span>
           </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col relative overflow-hidden pb-16 md:pb-0">
-        {/* Top Header / Status Bar */}
-        <header className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-zinc-900/20 backdrop-blur-sm z-40">
-           <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span className="uppercase tracking-wider">System Online</span>
-           </div>
-           
-           <div className="flex items-center gap-4">
-              <div className="relative">
-                <button 
-                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                  className="w-10 h-10 rounded-full bg-zinc-800/50 hover:bg-zinc-700/50 flex items-center justify-center text-zinc-400 transition-colors relative" 
-                  title="Notifications"
-                >
-                   <IconBell className="w-5 h-5" />
-                   {unreadCount > 0 && (
-                     <span className="absolute top-1 right-1 w-4 h-4 bg-indigo-500 rounded-full border-2 border-zinc-900 text-[8px] font-bold text-white flex items-center justify-center">
-                        {unreadCount}
-                     </span>
-                   )}
-                </button>
-                
-                {isNotificationsOpen && (
-                  <div className="absolute right-0 top-12 w-80 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    <div className="p-3 border-b border-white/5 flex justify-between items-center">
-                      <h3 className="text-sm font-bold text-zinc-100">Notifications</h3>
-                      <button className="text-xs text-indigo-400 hover:text-indigo-300" onClick={() => setIsNotificationsOpen(false)}>Close</button>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto custom-scrollbar p-2 space-y-2">
-                       {notifications.length === 0 ? (
-                         <div className="p-4 text-center text-xs text-zinc-500 italic">
-                            No new notifications
-                         </div>
-                       ) : (
-                         notifications.map(notif => (
-                           <div key={notif.id} className="p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer" onClick={() => {
-                             setIsNotificationsOpen(false);
-                             if (notif.type === 'connection_request') navigate('/connections');
-                             if (notif.type === 'unread_message') navigate('/chat');
-                           }}>
-                              <p className="text-sm text-zinc-300 font-medium">{notif.title}</p>
-                              <p className="text-xs text-zinc-500 mt-1">{notif.text}</p>
-                           </div>
-                         ))
-                       )}
-                    </div>
+      <main className="relative flex flex-1 flex-col overflow-hidden pb-16 md:pb-0">
+        <header className="z-40 flex h-16 items-center justify-between border-b border-white/5 bg-zinc-900/20 px-6 backdrop-blur-sm">
+          <div className="flex items-center gap-2 font-mono text-xs text-zinc-500">
+            <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+            <span className="uppercase tracking-wider">System Online</span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <button
+                onClick={() => setIsNotificationsOpen((open) => !open)}
+                className="relative flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800/50 text-zinc-400 transition-colors hover:bg-zinc-700/50"
+                title="Notifications"
+              >
+                <IconBell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-zinc-900 bg-indigo-500 text-[8px] font-bold text-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {isNotificationsOpen && (
+                <div className="absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-xl border border-white/10 bg-zinc-900 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                  <div className="flex items-center justify-between border-b border-white/5 p-3">
+                    <h3 className="text-sm font-bold text-zinc-100">Notifications</h3>
+                    <button className="text-xs text-indigo-400 hover:text-indigo-300" onClick={() => setIsNotificationsOpen(false)}>Close</button>
                   </div>
+                  <div className="custom-scrollbar max-h-64 space-y-2 overflow-y-auto p-2">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-xs italic text-zinc-500">No new notifications</div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className="cursor-pointer rounded-lg bg-white/5 p-3 transition-colors hover:bg-white/10"
+                          onClick={() => {
+                            setIsNotificationsOpen(false);
+                            if (notif.type === 'connection_request') {
+                              navigate('/connections');
+                            }
+                            if (notif.type === 'unread_message') {
+                              navigate('/chat');
+                            }
+                          }}
+                        >
+                          <p className="text-sm font-medium text-zinc-300">{notif.title}</p>
+                          <p className="mt-1 text-xs text-zinc-500">{notif.text}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="group flex items-center gap-3 rounded-full border border-white/5 bg-zinc-800/50 py-1 pl-1 pr-4 transition-all hover:bg-zinc-700/50"
+              title="Your Profile"
+            >
+              <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/20 transition-transform group-hover:scale-110">
+                {currentUser?.profilePicture ? (
+                  <img src={`${BACKEND_BASE_URL}${currentUser.profilePicture}`} alt="Avatar" className="h-full w-full object-cover" />
+                ) : (
+                  <IconUser className="h-4 w-4" />
                 )}
               </div>
-
-              <button 
-                onClick={() => navigate('/dashboard')}
-                className="flex items-center gap-3 pl-1 pr-4 py-1 rounded-full bg-zinc-800/50 hover:bg-zinc-700/50 border border-white/5 transition-all group"
-                title="Your Profile"
-              >
-                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform overflow-hidden">
-                    {currentUser?.profilePicture ? (
-                       <img src={`${BACKEND_BASE_URL}${currentUser.profilePicture}`} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                       <IconUser className="w-4 h-4" />
-                    )}
-                 </div>
-                 <span className="text-sm font-medium text-zinc-300 hidden md:block group-hover:text-indigo-200 transition-colors">
-                    {toHandle(currentUser?.name || 'my_profile')}
-                 </span>
-              </button>
-           </div>
+              <span className="hidden text-sm font-medium text-zinc-300 transition-colors group-hover:text-indigo-200 md:block">
+                {toHandle(currentUser?.name || 'my_profile')}
+              </span>
+            </button>
+          </div>
         </header>
 
-          {/* Page Content */}
-          <div className="flex-1 min-h-0 overflow-hidden p-4 lg:p-8 relative">
-           {/* Background Pattern (driven by CSS class from localStorage) */}
-           <BackgroundPattern />
+        <div className="relative flex-1 overflow-hidden p-4 lg:p-8">
+          <BackgroundPattern />
 
-            <div className="relative z-10 h-full min-h-0 overflow-y-auto">
-              <Outlet />
-           </div>
+          <div className="relative z-10 h-full min-h-0 overflow-y-auto">
+            <Outlet />
+          </div>
 
-           <div className="absolute bottom-2 right-4 text-[10px] text-zinc-500/80 z-10 hidden md:flex items-center gap-2">
-             <Link to="/privacy" className="hover:text-zinc-300 transition-colors">Privacy</Link>
-             <span>•</span>
-             <span>All rights reserved</span>
-           </div>
+          <div className="absolute bottom-2 right-4 z-10 hidden items-center gap-2 text-[10px] text-zinc-500/80 md:flex">
+            <Link to="/privacy" className="transition-colors hover:text-zinc-300">Privacy</Link>
+            <span>•</span>
+            <span>All rights reserved</span>
+          </div>
         </div>
 
-        <nav className="md:hidden absolute bottom-0 left-0 right-0 h-16 border-t border-white/5 bg-zinc-950/95 backdrop-blur-xl z-50 px-2 flex items-center justify-around">
+        <nav className="absolute bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-white/5 bg-zinc-950/95 px-2 backdrop-blur-xl md:hidden">
           {navItems.slice(0, 5).map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) => `flex flex-col items-center justify-center text-[10px] gap-1 px-2 py-1 rounded-lg ${isActive ? 'text-indigo-300 bg-indigo-500/10' : 'text-zinc-500'}`}
+              className={({ isActive }) => `flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-1 text-[10px] ${isActive ? 'bg-indigo-500/10 text-indigo-300' : 'text-zinc-500'}`}
             >
               {item.icon}
               <span>{item.label}</span>
@@ -428,7 +474,6 @@ const Layout: React.FC = () => {
           ))}
         </nav>
       </main>
-
     </div>
   );
 };

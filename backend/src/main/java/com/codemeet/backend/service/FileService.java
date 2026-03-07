@@ -23,29 +23,26 @@ public class FileService {
             throw new IllegalArgumentException("Failed to store empty file.");
         }
 
-        // Create upload directory if it doesn't exist
         Path uploadPath = Paths.get(uploadDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
         }
 
-        // Generate unique filename to parse
         String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
         String fileExtension = "";
         
         try {
             fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
         } catch (Exception e) {
-            fileExtension = ".jpg"; // Default
+            fileExtension = ".jpg";
         }
         
         String newFileName = UUID.randomUUID().toString() + fileExtension;
         Path filePath = uploadPath.resolve(newFileName);
 
-        // Copy file to directory
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-        return "/uploads/" + newFileName; // returning the static URL path
+        return "/uploads/" + newFileName;
     }
 
     public void deleteFileByUrl(String fileUrl) throws IOException {

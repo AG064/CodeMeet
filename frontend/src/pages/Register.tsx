@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios';
+import api, { getApiErrorMessage } from '../api/axios';
 import FeedbackBanner from '../components/FeedbackBanner.tsx';
 import { normalizeHandle } from '../utils/handle';
 
@@ -15,16 +15,14 @@ const Register: React.FC = () => {
     e.preventDefault();
     try {
             await api.post('/auth/register', { email, name: normalizeHandle(name), password });
-      // On success, redirect to login
       navigate('/login');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed');
+        } catch (error: unknown) {
+            setError(getApiErrorMessage(error, 'Registration failed'));
     }
   };
 
     return (
         <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 relative overflow-hidden">
-             {/* Background Effects */}
              <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[100px]"></div>
                 <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/10 rounded-full blur-[100px]"></div>

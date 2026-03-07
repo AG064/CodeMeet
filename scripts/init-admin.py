@@ -1,20 +1,15 @@
 import subprocess
 
-# --- CONFIGURATION ---
 CONTAINER_NAME = "web-database-1"
 DB_NAME = "codemeet_db"
 DB_USER = "postgres"
 
-# --- ADMIN CREDENTIALS ---
-# Change these before running!
 ADMIN_EMAIL = "admin@test.com"
 ADMIN_NAME = "Admin"
-# BCrypt hash of "admin123" — change the password and regenerate the hash for production
 ADMIN_PASSWORD_HASH = "$2a$12$5.cFcfT1hdyIvBMh9bVII.1/smzfvtd3BikfZel4G92WTzgZKdQSO"
 ADMIN_ROLE = "ADMIN"
 
 def generate_sql():
-    # Use DO $$ block so we can conditionally insert only if admin doesn't exist yet
     return f"""
 DO $$
 DECLARE
@@ -61,7 +56,6 @@ def init_admin():
         if process.returncode != 0:
             print(f"❌ Error:\n{errors}")
         else:
-            # RAISE NOTICE messages come through stderr in psql
             if errors:
                 print(errors)
             print("✅ Done.")

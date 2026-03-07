@@ -20,15 +20,12 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-
-        // Serve uploaded files (avatars, media)
         Path uploadPath = Paths.get(uploadDir);
         String uploadAbsolutePath = uploadPath.toFile().getAbsolutePath();
 
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + uploadAbsolutePath + "/");
 
-        // Serve React build output and support client-side routing
         registry.addResourceHandler("/**")
                 .addResourceLocations("classpath:/static/")
                 .resourceChain(true)
@@ -41,7 +38,6 @@ public class WebConfig implements WebMvcConfigurer {
                             return requestedResource;
                         }
 
-                        // Fall back to index.html for React Router paths
                         return new ClassPathResource("/static/index.html");
                     }
                 });

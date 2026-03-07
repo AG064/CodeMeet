@@ -18,7 +18,7 @@ type Candidate = {
         age?: number;
         ageVisible?: boolean;
     };
-    matchScore?: number; // Reserved for displaying a computed compatibility score if the UI exposes it later.
+    matchScore?: number;
 };
 
 const Matches: React.FC = () => {
@@ -54,6 +54,7 @@ const Matches: React.FC = () => {
                 return;
             }
 
+            // Each recommendation starts as just an id, so we load the public user card and bio in parallel.
             const detailedCandidates: Candidate[] = await Promise.all(
                 recs.map(async (rec: { id: string }) => {
                     try {
@@ -75,7 +76,7 @@ const Matches: React.FC = () => {
                                 ageVisible: bioRes.data?.ageVisible !== false,
                             }
                         };
-                    } catch(e) {
+                    } catch {
                         return { id: rec.id, name: 'Error', bio: {} } as Candidate;
                     }
                 })
@@ -168,10 +169,10 @@ const Matches: React.FC = () => {
                     <button onClick={fetchRecommendations} className="mt-4 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">Refresh</button>
                 </div>
             ) : (
+                /* Recommendation cards */
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {candidates.map((rec) => (
                         <div key={rec.id} className="cyber-card group flex flex-col relative overflow-hidden h-[28rem]">
-                            {/* Top half focuses on the avatar so each recommendation still feels person-centered. */}
                             <div className="h-1/2 bg-zinc-900 relative overflow-hidden">
                                 {rec.profilePicture ? (
                                     <img src={`${BACKEND_BASE_URL}${rec.profilePicture}`} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={rec.name} />
@@ -183,7 +184,6 @@ const Matches: React.FC = () => {
                                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-80"></div>
                             </div>
                             
-                            {/* Bottom half summarizes the most relevant bio fields used to judge the match. */}
                             <div className="p-6 -mt-12 relative z-10 flex-1 flex flex-col">
                                 <h3 className="text-xl font-bold text-zinc-100 mb-0.5">{rec.name}</h3>
                                 <div className="flex items-center gap-2 text-zinc-500 text-xs mb-4">

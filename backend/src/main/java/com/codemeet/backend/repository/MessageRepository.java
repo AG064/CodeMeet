@@ -13,15 +13,12 @@ import java.util.UUID;
 
 public interface MessageRepository extends JpaRepository<Message, UUID> {
 
-    // Get all messages between two users representing a single "Chat History"
     @Query("SELECT m FROM Message m WHERE (m.sender = :user1 AND m.recipient = :user2) OR (m.sender = :user2 AND m.recipient = :user1) ORDER BY m.timestamp DESC")
     Page<Message> findChatHistory(@Param("user1") User user1, @Param("user2") User user2, Pageable pageable);
 
-    // Get unread message count from a specific user
     @Query("SELECT COUNT(m) FROM Message m WHERE m.sender = :sender AND m.recipient = :recipient AND m.isRead = false")
     long countUnreadMessages(@Param("sender") User sender, @Param("recipient") User recipient);
 
-        // Get all recent chats for a user (latest message per distinct chat partner), ordered by latest message
         @Query(value = "SELECT partner_id FROM (" +
             "SELECT recipient_id AS partner_id, timestamp FROM messages WHERE sender_id = :userId " +
             "UNION ALL " +

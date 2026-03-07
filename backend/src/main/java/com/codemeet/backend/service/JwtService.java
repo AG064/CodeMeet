@@ -69,7 +69,7 @@ public class JwtService {
             Jwts.parser().verifyWith(getSignInKey()).build().parseSignedClaims(token);
             return true;
         } catch (Exception e) {
-            return false; // Token is invalid (expired, malformed, etc.)
+            return false;
         }
     }
 }

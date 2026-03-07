@@ -67,7 +67,6 @@ type FeedbackState = {
   message: string;
 };
 
-/**  Convert hex -> slightly lighter/darker variant for derived palette stops */
 function hexToHSL(hex: string): [number, number, number] {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
@@ -122,16 +121,13 @@ const Settings: React.FC = () => {
   const [selectedFont, setSelectedFont] = useState(() => localStorage.getItem(FONT_KEY) || '"Inter"');
   const [selectedTheme, setSelectedTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'default');
 
-  // Background state
   const [bgPref, setBgPref] = useState<string | { type: string; url: string }>(() => {
     try { return JSON.parse(localStorage.getItem(BG_KEY) || '"dots"'); } catch { return 'dots'; }
   });
   const bgFileRef = useRef<HTMLInputElement>(null);
 
-  // Blocked users state
   const [blockedUsers, setBlockedUsers] = useState<Array<{ id: string; name: string }>>([]);
 
-  // Custom theme colours
   const [customColors, setCustomColors] = useState<CustomColors>(() => {
     try { return JSON.parse(localStorage.getItem(CUSTOM_THEME_KEY) || 'null') || DEFAULT_CUSTOM; } catch { return DEFAULT_CUSTOM; }
   });
@@ -148,7 +144,6 @@ const Settings: React.FC = () => {
     setFeedback(null);
   };
 
-  /** Remove all inline custom-theme overrides so the next theme's CSS can take effect */
   const clearCustomColors = () => {
     const s = document.documentElement.style;
     [
@@ -181,7 +176,6 @@ const Settings: React.FC = () => {
     root.style.setProperty('--custom-bg', c.bg);
     root.style.setProperty('--custom-surface', c.surface);
     root.style.setProperty('--custom-accent', c.accent);
-    // Derive a full zinc + indigo palette from the 3 picks
     root.style.setProperty('--color-zinc-950', c.bg);
     root.style.setProperty('--color-zinc-900', c.surface);
     root.style.setProperty('--color-zinc-800', adjustL(c.surface, 5));
@@ -202,13 +196,12 @@ const Settings: React.FC = () => {
     localStorage.setItem(CUSTOM_THEME_KEY, JSON.stringify(c));
   }, []);
 
-  // Re-apply custom colours if the custom theme is active on mount
   useEffect(() => {
     if (selectedTheme === 'custom') {
       document.documentElement.setAttribute('data-theme', 'custom');
       applyCustomColors(customColors);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [applyCustomColors, customColors, selectedTheme]);
 
   useEffect(() => {
     let cancelled = false;
@@ -300,12 +293,10 @@ const Settings: React.FC = () => {
     setFeedback(null);
   };
 
-  // Background handlers
   const applyBg = (val: string | { type: string; url: string }) => {
     setBgPref(val);
     localStorage.setItem(BG_KEY, JSON.stringify(val));
     setFeedback(null);
-    // Force Layout re-render by dispatching a storage event
     window.dispatchEvent(new Event('bg-changed'));
   };
 
@@ -362,7 +353,6 @@ const Settings: React.FC = () => {
 
       {feedback && <FeedbackBanner variant={feedback.variant}>{feedback.message}</FeedbackBanner>}
 
-      {/* Font Picker */}
       <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-4">
         <h2 className="text-lg font-semibold text-zinc-200">Font</h2>
         <p className="text-zinc-500 text-sm">Choose a typeface for the interface. Includes GitHub's Monaspace family.</p>
@@ -402,7 +392,6 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
-      {/* Theme Picker */}
       <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-4">
         <h2 className="text-lg font-semibold text-zinc-200">Theme</h2>
         <p className="text-zinc-500 text-sm">Switch between developer-friendly colour palettes. Applied instantly.</p>
@@ -419,7 +408,6 @@ const Settings: React.FC = () => {
               }`}
             >
               <div className="flex items-center gap-3">
-                {/* Colour swatch */}
                 {theme.colors.length > 0 ? (
                   <div className="flex -space-x-1">
                     {theme.colors.map((c, i) => (
@@ -447,7 +435,6 @@ const Settings: React.FC = () => {
           ))}
         </div>
 
-        {/* Custom theme colour inputs — visible when Custom is selected */}
         {selectedTheme === 'custom' && (
           <div className="rounded-xl border border-white/5 bg-zinc-900/60 p-4 space-y-3">
             <p className="text-xs text-zinc-500">Pick 3 colours. The rest of the palette is derived automatically.</p>
@@ -476,7 +463,6 @@ const Settings: React.FC = () => {
                 />
               </div>
             ))}
-            {/* Live preview swatch */}
             <div className="flex gap-1 pt-1">
               <div className="flex-1 h-6 rounded-l-lg" style={{ backgroundColor: customColors.bg }} />
               <div className="flex-1 h-6" style={{ backgroundColor: customColors.surface }} />
@@ -486,7 +472,6 @@ const Settings: React.FC = () => {
         )}
       </div>
 
-      {/* Background Picker */}
       <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-4">
         <h2 className="text-lg font-semibold text-zinc-200">Background Pattern</h2>
         <p className="text-zinc-500 text-sm">Choose a content-area background pattern, or upload your own image.</p>
@@ -504,7 +489,6 @@ const Settings: React.FC = () => {
                     : 'border-white/5 bg-zinc-900/40 hover:border-white/10 hover:bg-zinc-800/40'
                 }`}
               >
-                {/* Mini preview */}
                 <div className="w-full h-10 rounded-lg bg-zinc-800/60 mb-2 overflow-hidden relative border border-white/5">
                   {bg.preview !== 'none' && (
                     <div
@@ -522,7 +506,6 @@ const Settings: React.FC = () => {
             );
           })}
 
-          {/* Custom image upload tile */}
           <button
             onClick={() => bgFileRef.current?.click()}
             className={`rounded-xl border px-3 py-3 text-left transition-all ${
@@ -557,7 +540,6 @@ const Settings: React.FC = () => {
         <p className="text-[10px] text-zinc-600">Recommended: 1920×1080 or larger, JPEG/PNG/WebP, under 2 MB for best performance. Image is stored in your browser only.</p>
       </div>
 
-      {/* Privacy Controls */}
       <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-4">
         <h2 className="text-lg font-semibold text-zinc-200">Privacy Controls</h2>
         <p className="text-zinc-500 text-sm">
@@ -595,7 +577,6 @@ const Settings: React.FC = () => {
 
       </div>
 
-      {/* Blocked users */}
       <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-4">
         <h2 className="text-lg font-semibold text-zinc-200">Blocked Users</h2>
         <p className="text-zinc-500 text-sm">Manage your block list. Blocked users cannot see your profile or interact with you.</p>

@@ -19,8 +19,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api")
 public class ConnectionController {
-    // Manages connection requests, accepted relationships, and disconnect actions.
-
     private final ConnectionRepository connectionRepository;
     private final UserRepository userRepository;
     private final RecommendationService recommendationService;
@@ -33,7 +31,6 @@ public class ConnectionController {
         this.messagingTemplate = messagingTemplate;
     }
 
-    // Returns accepted connection ids only, matching the lightweight REST contract described in the task.
     @GetMapping("/connections")
     public ResponseEntity<List<Map<String, String>>> getConnections(Authentication authentication) {
         User currentUser = getCurrentUser(authentication);
@@ -54,7 +51,6 @@ public class ConnectionController {
         return ResponseEntity.ok(response);
     }
 
-    // Returns incoming pending requests so the frontend can decide whether to show accept or reject actions.
     @GetMapping("/connections/pending")
     public ResponseEntity<List<Map<String, String>>> getPendingConnections(Authentication authentication) {
         User currentUser = getCurrentUser(authentication);
@@ -110,7 +106,7 @@ public class ConnectionController {
          List<Map<String, String>> response = pending.stream()
                 .map(conn -> {
                     Map<String, String> map = new HashMap<>();
-                    map.put("id", conn.getRequester().getId().toString()); // The requester id is the user the recipient can review.
+                    map.put("id", conn.getRequester().getId().toString());
                     map.put("connectionId", conn.getId().toString()); 
                     return map;
                 })

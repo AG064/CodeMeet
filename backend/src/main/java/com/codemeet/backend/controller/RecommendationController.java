@@ -23,8 +23,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api")
 public class RecommendationController {
-    // Exposes recommendation and dismissal endpoints while keeping payloads intentionally small.
-
     private final RecommendationService recommendationService;
     private final UserRepository userRepository;
 
@@ -38,10 +36,8 @@ public class RecommendationController {
         User currentUser = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        // The product contract limits discovery to at most ten ids at a time.
         List<UUID> recommendedUserIds = recommendationService.getRecommendationsForUser(currentUser, 10);
 
-        // Return ids only so the frontend can compose richer profile cards with follow-up requests.
         List<Map<String, String>> response = recommendedUserIds.stream()
                 .map(id -> {
                     Map<String, String> map = new HashMap<>();

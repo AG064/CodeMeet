@@ -66,7 +66,6 @@ public class WebSocketPresenceEventListener {
                     userRepository.save(user);
                 });
             } catch (IllegalArgumentException ignored) {
-                // Ignore malformed user id values
             }
             notifyConnections(change.userId(), false);
         }
@@ -91,7 +90,6 @@ public class WebSocketPresenceEventListener {
                 messagingTemplate.convertAndSendToUser(peer.getId().toString(), "/queue/presence", event);
             }
         } catch (IllegalArgumentException ignored) {
-            // Ignore malformed user id values
         }
     }
 }
