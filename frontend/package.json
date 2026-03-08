@@ -6,6 +6,7 @@
   "scripts": {
     "db:drop": "python3 ../scripts/drop-db.py",
     "db:seed": "python3 ../scripts/seed-db.py",
+    "db:init-admin":"python3 ../scripts/init-admin.py",
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

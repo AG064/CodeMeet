@@ -6,9 +6,11 @@
   <component name="ChangeListManager">
     <list default="true" id="ebd9cf57-ebf5-43b0-b4ff-e3e2c9b51933" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/.env" beforeDir="false" afterPath="$PROJECT_DIR$/backend/.env.example" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/backend/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Chat.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Chat.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/schema.sql" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/schema.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/init-admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/init-admin.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/seed-db.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/seed-db.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -87,7 +89,7 @@
       <workItem from="1772656146394" duration="9651000" />
       <workItem from="1772737072781" duration="430000" />
       <workItem from="1772747929654" duration="6143000" />
-      <workItem from="1772994487450" duration="693000" />
+      <workItem from="1772994487450" duration="2762000" />
     </task>
     <servers />
   </component>

@@ -20,7 +20,7 @@ BEGIN
 
         admin_id := gen_random_uuid();
 
-        INSERT INTO users (id, email, name, password, role, last_seen_at, profile_picture)
+        INSERT INTO users (id, email, name, password, role, last_seen_at, profile_picture, hide_location, hide_age)
         VALUES (
             admin_id,
             '{ADMIN_EMAIL}',
@@ -28,7 +28,9 @@ BEGIN
             '{ADMIN_PASSWORD_HASH}',
             '{ADMIN_ROLE}',
             NOW(),
-            NULL
+            NULL,
+            false,
+            false
         );
 
         RAISE NOTICE '>>> Admin user created: {ADMIN_EMAIL}';
