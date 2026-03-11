@@ -2,22 +2,23 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { IconCheck, IconNetwork } from '../components/Icons';
+import { getBackendBaseUrl } from '../utils/network';
 
-const BACKEND_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
+const BACKEND_BASE_URL = getBackendBaseUrl();
 
 type ConnectionRequest = {
   id: string;
   connectionId: string;
   name: string;
   profilePicture?: string;
-  bio?: { maxDistanceKm?: number; locationVisible?: boolean; primaryLanguage?: string };
+  bio?: { maxDistanceKm?: number; locationVisible?: boolean; primaryLanguage?: string; city?: string };
 };
 
 type ActiveConnection = {
   id: string;
   name: string;
   profilePicture?: string;
-  bio?: { maxDistanceKm?: number; locationVisible?: boolean; primaryLanguage?: string };
+  bio?: { maxDistanceKm?: number; locationVisible?: boolean; primaryLanguage?: string; city?: string };
 };
 
 type ConnectionSummary = {
@@ -34,6 +35,7 @@ type PublicBio = {
   maxDistanceKm?: number;
   locationVisible?: boolean;
   primaryLanguage?: string;
+  city?: string;
 };
 
 const Connections: React.FC = () => {
@@ -41,6 +43,7 @@ const Connections: React.FC = () => {
   const [pendingRequests, setPendingRequests] = useState<ConnectionRequest[]>([]);
   const [activeConnections, setActiveConnections] = useState<ActiveConnection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fatalError, setFatalError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,13 +52,13 @@ const Connections: React.FC = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    setFatalError(null);
     try {
       const [pendingRes, activeRes] = await Promise.all([
         api.get<ConnectionSummary[]>('/connections/pending'),
         api.get<ConnectionSummary[]>('/connections')
       ]);
 
-      // The list endpoints return relationship ids first, then we hydrate each card with public user details.
       const detailedPending = await Promise.all(
         pendingRes.data.map(async (req) => {
           try {
@@ -68,7 +71,12 @@ const Connections: React.FC = () => {
               profilePicture: userRes.data?.profilePicture,
               bio: bioRes.data
             };
-          } catch {
+          } catch (error: any) {
+            if (error?.response?.status === 403) {
+              setFatalError('Access forbidden. You do not have permission to view connections.');
+            } else if (error?.response?.status === 401) {
+              setFatalError('Session expired or not authenticated. Please log in again.');
+            }
             return { id: req.id, connectionId: req.connectionId, name: 'Unknown' };
           }
         })
@@ -86,7 +94,12 @@ const Connections: React.FC = () => {
               profilePicture: userRes.data?.profilePicture,
               bio: bioRes.data
             };
-          } catch {
+          } catch (error: any) {
+            if (error?.response?.status === 403) {
+              setFatalError('Access forbidden. You do not have permission to view connections.');
+            } else if (error?.response?.status === 401) {
+              setFatalError('Session expired or not authenticated. Please log in again.');
+            }
             return { id: conn.id, name: 'Unknown' };
           }
         })
@@ -97,18 +110,23 @@ const Connections: React.FC = () => {
         setActiveTab('pending');
       }
 
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setFatalError('Access forbidden. You do not have permission to view connections.');
+      } else if (err?.response?.status === 401) {
+        setFatalError('Session expired or not authenticated. Please log in again.');
+      } else {
+        console.error(err);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+
   const handleAccept = async (req: ConnectionRequest) => {
     try {
       await api.post(`/connections/${req.connectionId}/accept`);
-
-      // Move the accepted user from the pending list into the active network immediately.
       setPendingRequests(prev => prev.filter(p => p.connectionId !== req.connectionId));
       const newActive: ActiveConnection = {
         id: req.id,
@@ -117,8 +135,14 @@ const Connections: React.FC = () => {
         bio: req.bio
       };
       setActiveConnections(prev => [...prev, newActive]);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setFatalError('Access forbidden. You do not have permission to accept connections.');
+      } else if (err?.response?.status === 401) {
+        setFatalError('Session expired or not authenticated. Please log in again.');
+      } else {
+        console.error(err);
+      }
     }
   };
 
@@ -126,8 +150,14 @@ const Connections: React.FC = () => {
     try {
       await api.post(`/connections/${req.connectionId}/reject`);
       setPendingRequests(prev => prev.filter(p => p.connectionId !== req.connectionId));
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setFatalError('Access forbidden. You do not have permission to reject connections.');
+      } else if (err?.response?.status === 401) {
+        setFatalError('Session expired or not authenticated. Please log in again.');
+      } else {
+        console.error(err);
+      }
     }
   };
 
@@ -136,14 +166,36 @@ const Connections: React.FC = () => {
     try {
       await api.delete(`/connections/disconnect/${id}`);
       setActiveConnections(prev => prev.filter(conn => conn.id !== id));
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setFatalError('Access forbidden. You do not have permission to disconnect.');
+      } else if (err?.response?.status === 401) {
+        setFatalError('Session expired or not authenticated. Please log in again.');
+      } else {
+        console.error(err);
+      }
     }
   };
 
   const handleMessage = (userId: string) => {
       navigate(`/chat/${userId}`);
   };
+
+  if (fatalError) {
+    return (
+      <div className="flex h-full min-h-0 w-full items-center justify-center bg-transparent rounded-3xl shadow-2xl border border-white/5 animate-fade-in relative backdrop-blur-sm">
+        <div className="max-w-md w-full mx-auto p-8 bg-zinc-900/80 rounded-2xl border border-white/10 flex flex-col items-center gap-6">
+          <div className="w-full text-center text-red-400 font-semibold text-lg mb-2">{fatalError}</div>
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-2 px-6 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-500 transition-all"
+          >
+            Go back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) return (
       <div className="flex items-center justify-center h-full text-zinc-500 font-medium animate-pulse">
@@ -227,7 +279,7 @@ const Connections: React.FC = () => {
                                             </span>
                                             {req.bio.locationVisible !== false && req.bio.maxDistanceKm != null && (
                                                 <span className="px-2 py-1 bg-zinc-900/50 rounded text-[10px] text-zinc-400 border border-zinc-800">
-                                                {req.bio.maxDistanceKm} km radius
+                                              {req.bio.city ? `${req.bio.city} • ` : ''}{req.bio.maxDistanceKm} km radius
                                                 </span>
                                             )}
                                         </div>

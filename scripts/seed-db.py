@@ -34,9 +34,16 @@ EXPERIENCE = ["Junior", "Mid", "Senior", "Lead"]
 LOOK_FOR = ["Mentor", "Mentee", "Coding Buddy", "Networking"]
 OS = ["Linux", "macOS", "Windows"]
 GEO_POINTS = [
-    (40.7128, -74.0060), (51.5072, -0.1276), (35.6762, 139.6503),
-    (52.5200, 13.4050), (37.7749, -122.4194), (30.2672, -97.7431),
-    (43.6532, -79.3832),
+    (40.7128, -74.0060, "New York"),
+    (51.5072, -0.1276, "London"),
+    (35.6762, 139.6503, "Tokyo"),
+    (52.5200, 13.4050, "Berlin"),
+    (37.7749, -122.4194, "San Francisco"),
+    (30.2672, -97.7431, "Austin"),
+    (43.6532, -79.3832, "Toronto"),
+    (58.3806, 26.7250, "Tartu"),
+    (59.4369, 24.7535, "Tallinn"),
+    (59.3772, 28.1900, "Narva")
 ]
 FIRST_NAMES = ["Alex", "Jordan", "Taylor", "Casey", "Morgan", "Riley", "Jamie", "Chris", "Sam", "Drew"]
 LAST_NAMES = ["Smith", "Johnson", "Williams", "Jones", "Brown", "Davis", "Miller", "Wilson"]
@@ -74,13 +81,13 @@ def generate_sql(num_users=100):
 
         b_id = str(uuid.uuid4())
         age = random.randint(18, 60)
-        base_lat, base_lng = random.choice(GEO_POINTS)
+        base_lat, base_lng, city = random.choice(GEO_POINTS)
         latitude = round(base_lat + ((random.random() - 0.5) * 0.35), 6)
         longitude = round(base_lng + ((random.random() - 0.5) * 0.35), 6)
         max_distance_km = random.randint(10, 120)
         bios_sql.append(
             f"('{b_id}', 'Night Owl', '{random.choice(EXPERIENCE)}', "
-            f"'{random.choice(LOOK_FOR)}', '{random.choice(OS)}', '{random.choice(LANGUAGES)}', {latitude}, {longitude}, {max_distance_km}, {age}, '{u_id}')"
+            f"'{random.choice(LOOK_FOR)}', '{random.choice(OS)}', '{random.choice(LANGUAGES)}', '{city}', {latitude}, {longitude}, {max_distance_km}, {age}, '{u_id}')"
         )
 
     accepted_pairs = set()
@@ -116,7 +123,7 @@ def generate_sql(num_users=100):
     sql = "BEGIN;\n"
     sql += "INSERT INTO users (id, email, last_seen_at, name, password, profile_picture, role, hide_location, hide_age) VALUES\n" + ",\n".join(users_sql) + ";\n\n"
     sql += "INSERT INTO profiles (id, about_me, user_id) VALUES\n" + ",\n".join(profiles_sql) + ";\n\n"
-    sql += "INSERT INTO bios (id, coding_style, experience_level, look_for, preferred_os, primary_language, latitude, longitude, max_distance_km, age, user_id) VALUES\n" + ",\n".join(bios_sql) + ";\n\n"
+    sql += "INSERT INTO bios (id, coding_style, experience_level, look_for, preferred_os, primary_language, city, latitude, longitude, max_distance_km, age, user_id) VALUES\n" + ",\n".join(bios_sql) + ";\n\n"
 
     if connections_sql:
         sql += "INSERT INTO connections (id, requester_id, recipient_id, status, created_at) VALUES\n" + ",\n".join(connections_sql) + ";\n\n"

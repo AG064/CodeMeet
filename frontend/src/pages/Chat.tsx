@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Client } from '@stomp/stompjs';
-import api from '../api/axios';
+import api, { getApiErrorMessage } from '../api/axios';
 import FeedbackBanner from '../components/FeedbackBanner.tsx';
 import { IconEdit, IconMore, IconUser, IconMessage, IconSearch, IconInfo, IconPaperclip, IconSend, IconX } from '../components/Icons';
+import { getBackendBaseUrl, getWebSocketBaseUrl } from '../utils/network';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-const BACKEND_BASE_URL = import.meta.env.VITE_WS_BASE_URL || API_BASE_URL.replace(/\/api\/?$/, '');
+const BACKEND_BASE_URL = getBackendBaseUrl();
+const WS_BASE_URL = getWebSocketBaseUrl();
 const TYPING_RENEW_INTERVAL_MS = 1000;
 const TYPING_IDLE_TIMEOUT_MS = 1200;
 const TYPING_INDICATOR_HIDE_DELAY_MS = 2000;
@@ -105,6 +106,7 @@ const Chat: React.FC = () => {
    const [uploading, setUploading] = useState(false);
    const [blockingPartner, setBlockingPartner] = useState(false);
    const [actionError, setActionError] = useState<string | null>(null);
+   const [fatalError, setFatalError] = useState<string | null>(null);
    const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -162,7 +164,7 @@ const Chat: React.FC = () => {
       }
 
       const token = localStorage.getItem('token');
-      const wsUrl = BACKEND_BASE_URL.replace(/^http/, 'ws') + '/ws';
+      const wsUrl = `${WS_BASE_URL}/ws`;
 
       const client = new Client({
          brokerURL: wsUrl,
@@ -301,6 +303,18 @@ const Chat: React.FC = () => {
          setPartners(partnersWithPresence);
          connectWebSocket(userRes.data.id);
       } catch (error) {
+         // Show a fatal error if user cannot access chat at all
+         let status: number | undefined = undefined;
+         if (typeof error === 'object' && error !== null && 'isAxiosError' in error && (error as any).isAxiosError) {
+           status = (error as any).response?.status;
+         }
+         if (status === 403) {
+            setFatalError('You do not have permission to access chat.');
+         } else if (status === 404) {
+            setFatalError('Chat resource not found.');
+         } else {
+            setFatalError(getApiErrorMessage(error, 'Failed to load chat.'));
+         }
          console.error('Core chat bootstrap failed', error);
       }
    }, [connectWebSocket]);
@@ -353,8 +367,18 @@ const Chat: React.FC = () => {
 
    useEffect(() => {
       if (partnerId && currentUserId) {
-         void fetchChatHistory(partnerId);
-         void markAsRead(partnerId);
+         // Try to fetch chat history, handle forbidden/not found
+         fetchChatHistory(partnerId).catch((error) => {
+            const status = error?.response?.status;
+            if (status === 403) {
+               setFatalError('You do not have permission to view this conversation.');
+            } else if (status === 404) {
+               setFatalError('This conversation does not exist.');
+            } else {
+               setFatalError(getApiErrorMessage(error, 'Failed to load conversation.'));
+            }
+         });
+         markAsRead(partnerId).catch(() => {});
          setIsPartnerTyping(false);
          return;
       }
@@ -376,14 +400,25 @@ const Chat: React.FC = () => {
          return;
       }
 
-      void loadPartnerData(partnerId).then((partner) => {
-         if (!partner) {
-            return;
-         }
-
-         setActivePartnerData(partner);
-         setPartners((prev) => (prev.some((item) => item.id === partner.id) ? prev : [partner, ...prev]));
-      });
+      loadPartnerData(partnerId)
+         .then((partner) => {
+            if (!partner) {
+               setFatalError('This user does not exist or you do not have access.');
+               return;
+            }
+            setActivePartnerData(partner);
+            setPartners((prev) => (prev.some((item) => item.id === partner.id) ? prev : [partner, ...prev]));
+         })
+         .catch((error) => {
+            const status = error?.response?.status;
+            if (status === 403) {
+               setFatalError('You do not have permission to view this user.');
+            } else if (status === 404) {
+               setFatalError('This user does not exist.');
+            } else {
+               setFatalError(getApiErrorMessage(error, 'Failed to load user.'));
+            }
+         });
    }, [loadPartnerData, partnerId, partners]);
 
    useEffect(() => {
@@ -578,11 +613,29 @@ const Chat: React.FC = () => {
       ? messages
       : messages.filter((message) => message.content.toLowerCase().includes(searchQuery.toLowerCase()));
 
+   if (fatalError) {
+      return (
+         <div className="flex h-full min-h-0 w-full items-center justify-center bg-transparent rounded-3xl shadow-2xl border border-white/5 animate-fade-in relative backdrop-blur-sm">
+            <div className="max-w-md w-full mx-auto p-8 bg-zinc-900/80 rounded-2xl border border-white/10 flex flex-col items-center gap-6">
+               <FeedbackBanner variant="error" className="w-full text-center">
+                  {fatalError}
+               </FeedbackBanner>
+               <button
+                  onClick={() => navigate('/chat')}
+                  className="mt-2 px-6 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-500 transition-all"
+               >
+                  Go back
+               </button>
+            </div>
+         </div>
+      );
+   }
+
    return (
       <div className="flex h-full min-h-0 w-full bg-transparent rounded-3xl shadow-2xl border border-white/5 animate-fade-in relative backdrop-blur-sm">
 
       {/* Conversation list */}
-      <div className={`w-full md:w-80 min-h-0 flex-shrink-0 bg-zinc-900/60 border-r border-white/5 flex flex-col backdrop-blur-xl z-20 ${partnerId ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`w-full md:w-80 min-h-0 flex-shrink-0 bg-zinc-900/60 border-r border-white/5 flex flex-col backdrop-blur-xl z-20 rounded-2xl ${partnerId ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-6 border-b border-white/5 flex justify-between items-center">
             <h2 className="text-lg font-bold text-zinc-100 tracking-tight">Messages</h2>
             <div className="flex gap-2">
@@ -678,7 +731,7 @@ const Chat: React.FC = () => {
       </div>
 
          {/* Active conversation */}
-      <div className={`flex-1 min-h-0 flex flex-col bg-zinc-900/30 relative overflow-hidden ${!partnerId ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 min-h-0 flex flex-col bg-zinc-900/30 relative overflow-hidden rounded-2xl ${!partnerId ? 'hidden md:flex' : 'flex'}`}>
          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
          <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/5 rounded-full blur-3xl pointer-events-none translate-y-1/2 -translate-x-1/2"></div>
 
@@ -743,13 +796,19 @@ const Chat: React.FC = () => {
                                   >
                           <IconSearch className="w-5 h-5" />
                        </button>
-                                  <button
-                                       onClick={() => partnerId && navigate(`/profile/${partnerId}`)}
-                                       className="p-2.5 rounded-full text-zinc-400 hover:text-indigo-400 hover:bg-white/5 transition-all"
-                                       title="Profile info"
-                                  >
-                          <IconInfo className="w-5 h-5" />
-                       </button>
+                                                   <button
+                                                          onClick={() => {
+                                                             if (partnerId && currentUserId && partnerId === currentUserId) {
+                                                                navigate('/dashboard');
+                                                             } else if (partnerId) {
+                                                                navigate(`/profile/${partnerId}`);
+                                                             }
+                                                          }}
+                                                          className="p-2.5 rounded-full text-zinc-400 hover:text-indigo-400 hover:bg-white/5 transition-all"
+                                                          title="Profile info"
+                                                   >
+                                       <IconInfo className="w-5 h-5" />
+                                  </button>
                     </div>
                 </div>
 
@@ -779,7 +838,6 @@ const Chat: React.FC = () => {
                 <div ref={messagesContainerRef} className="flex-1 min-h-0 p-6 overflow-y-auto custom-scrollbar scroll-smooth flex flex-col z-10">
                   {filteredMessages.length === 0 ? (
                         <div className="flex-1 flex flex-col items-center justify-center opacity-40">
-                           <div className="w-16 h-1 bg-gradient-to-r from-transparent via-zinc-600 to-transparent rounded-full mb-4"></div>
                         <p className="text-sm text-zinc-500 font-medium">{searchQuery ? 'No matching messages' : 'Start the conversation'}</p>
                         </div>
                     ) : (

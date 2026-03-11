@@ -88,6 +88,7 @@ public class UserController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not set up yet"));
 
         ProfileDto dto = new ProfileDto();
+        dto.setId(targetUser.getId());
         dto.setAboutMe(profile.getAboutMe());
         return ResponseEntity.ok(dto);
     }
@@ -116,6 +117,7 @@ public class UserController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not set up yet"));
 
         ProfileDto dto = new ProfileDto();
+        dto.setId(user.getId());
         dto.setAboutMe(profile.getAboutMe());
         return ResponseEntity.ok(dto);
     }
@@ -178,6 +180,7 @@ public class UserController {
         bio.setLookFor(normalizeText(request.getLookFor()));
         bio.setPreferredOs(normalizeText(request.getPreferredOs()));
         bio.setCodingStyle(normalizeText(request.getCodingStyle()));
+        bio.setCity(normalizeText(request.getCity()));
         bio.setLatitude(request.getLatitude());
         bio.setLongitude(request.getLongitude());
         bio.setMaxDistanceKm(request.getMaxDistanceKm());
@@ -242,11 +245,13 @@ public class UserController {
 
     private BioDto mapToBioDto(Bio bio, boolean includePrivateFields) {
         BioDto dto = new BioDto();
+        dto.setId(bio.getUser().getId());
         dto.setPrimaryLanguage(bio.getPrimaryLanguage());
         dto.setExperienceLevel(bio.getExperienceLevel());
         dto.setLookFor(bio.getLookFor());
         dto.setPreferredOs(bio.getPreferredOs());
         dto.setCodingStyle(bio.getCodingStyle());
+        dto.setCity(includePrivateFields || !bio.getUser().isHideLocation() ? bio.getCity() : null);
         dto.setLatitude(includePrivateFields ? bio.getLatitude() : null);
         dto.setLongitude(includePrivateFields ? bio.getLongitude() : null);
         dto.setLocationVisible(includePrivateFields || !bio.getUser().isHideLocation());
@@ -275,6 +280,7 @@ public class UserController {
         requireBioValue(request.getLookFor(), "Looking for");
         requireBioValue(request.getPreferredOs(), "Preferred OS");
         requireBioValue(request.getCodingStyle(), "Coding style");
+        requireBioValue(request.getCity(), "City");
 
         Double latitude = request.getLatitude();
         Double longitude = request.getLongitude();

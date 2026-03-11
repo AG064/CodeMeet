@@ -4,8 +4,10 @@ import { Client } from '@stomp/stompjs';
 import api from '../api/axios';
 import { IconHome, IconSearch, IconNetwork, IconMessage, IconUser, IconLogout, IconBell, IconGear } from '../components/Icons';
 import { toHandle } from '../utils/handle';
+import { getBackendBaseUrl, getWebSocketBaseUrl } from '../utils/network';
 
-const BACKEND_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
+const BACKEND_BASE_URL = getBackendBaseUrl();
+const WS_BASE_URL = getWebSocketBaseUrl();
 
 type Notification = {
   id: string;
@@ -98,10 +100,13 @@ const BackgroundPattern: React.FC = () => {
         }
 
         last = time;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-zinc-900') || 'rgba(0, 0, 0, 0.05)';
+        ctx.globalAlpha = 0.05;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1;
 
-        ctx.fillStyle = 'rgba(99, 102, 241, 0.6)';
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-indigo-500') || 'rgba(99, 102, 241, 0.6)';
+        ctx.globalAlpha = 0.6;
         ctx.font = `${fontSize}px monospace`;
 
         for (let i = 0; i < drops.length; i += 1) {
@@ -138,13 +143,16 @@ const BackgroundPattern: React.FC = () => {
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        const starColor = getComputedStyle(document.documentElement).getPropertyValue('--color-zinc-50') || '#fff';
         for (const star of stars) {
           const brightness = 0.15 + 0.85 * ((Math.sin(t * star.speed + star.phase) + 1) / 2);
           ctx.beginPath();
           ctx.arc(star.x * canvas.width, star.y * canvas.height, star.r, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+          ctx.fillStyle = starColor;
+          ctx.globalAlpha = brightness;
           ctx.fill();
         }
+        ctx.globalAlpha = 1;
       };
 
       animFrameRef.current = requestAnimationFrame(draw);
@@ -258,6 +266,9 @@ const Layout: React.FC = () => {
     setUnreadCount(nextNotifications.length);
   }, [fetchNotificationsData]);
 
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
+
   useEffect(() => {
     if (isAuthRoute(location.pathname)) {
       return undefined;
@@ -266,12 +277,12 @@ const Layout: React.FC = () => {
     const token = localStorage.getItem('token');
     if (!token || token === 'undefined' || token === 'null') {
       localStorage.removeItem('token');
-      navigate('/login', { replace: true });
+      navigate('/login', { replace: true, state: { loggedOut: true } });
       return undefined;
     }
 
     let cancelled = false;
-    const wsUrl = BACKEND_BASE_URL.replace(/^http/, 'ws') + '/ws';
+    const wsUrl = `${WS_BASE_URL}/ws`;
     const client = new Client({
       brokerURL: wsUrl,
       connectHeaders: { Authorization: `Bearer ${token}` },
@@ -291,19 +302,38 @@ const Layout: React.FC = () => {
     stompClient.current = client;
 
     void (async () => {
-      const [user, nextNotifications] = await Promise.all([
-        fetchCurrentUserData(),
-        fetchNotificationsData(),
-      ]);
+      try {
+        const [user, nextNotifications] = await Promise.all([
+          fetchCurrentUserData(),
+          fetchNotificationsData(),
+        ]);
 
-      if (cancelled) {
-        return;
+        if (cancelled) {
+          return;
+        }
+
+        if (!user) {
+          setSessionExpired(true);
+          return;
+        }
+
+        setCurrentUser(user);
+        setNotifications(nextNotifications);
+        setUnreadCount(nextNotifications.length);
+        client.activate();
+      } catch (error: any) {
+        if (error?.response?.status === 403) {
+          setForbidden(true);
+          // Do NOT remove token or deactivate socket, just show error
+        } else if (error?.response?.status === 401) {
+          setSessionExpired(true);
+          localStorage.removeItem('token');
+        } else {
+          // fallback: treat as logged out
+          localStorage.removeItem('token');
+          navigate('/login', { replace: true, state: { loggedOut: true } });
+        }
       }
-
-      setCurrentUser(user);
-      setNotifications(nextNotifications);
-      setUnreadCount(nextNotifications.length);
-      client.activate();
     })();
 
     return () => {
@@ -329,8 +359,42 @@ const Layout: React.FC = () => {
     { path: '/settings', label: 'Settings', icon: <IconGear className="h-5 w-5" /> },
   ];
 
+
   if (isAuthRoute(location.pathname)) {
     return <Outlet />;
+  }
+
+  if (forbidden) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 text-zinc-200 animate-fade-in">
+        <div className="bg-zinc-900/80 border border-white/10 rounded-2xl p-8 shadow-xl flex flex-col items-center gap-6">
+          <h2 className="text-2xl font-bold text-red-400">Access Forbidden</h2>
+          <p className="text-zinc-400 text-center max-w-xs">You do not have permission to access this resource. Please contact support or try a different page.</p>
+          <button
+            className="mt-2 px-6 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-500 transition-all"
+            onClick={() => navigate(-1)}
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (sessionExpired) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 text-zinc-200 animate-fade-in">
+        <div className="bg-zinc-900/80 border border-white/10 rounded-2xl p-8 shadow-xl flex flex-col items-center gap-6">
+          <h2 className="text-2xl font-bold text-red-400">Session Expired</h2>
+          <p className="text-zinc-400 text-center max-w-xs">Your session has expired or you no longer have access. Please log in again to continue.</p>
+          <button
+            className="mt-2 px-6 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-500 transition-all"
+            onClick={() => navigate('/login', { replace: true })}
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -429,6 +493,15 @@ const Layout: React.FC = () => {
             </div>
 
             <button
+              onClick={handleLogout}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800/50 text-red-400/80 transition-colors hover:bg-red-500/10 hover:text-red-300 md:hidden"
+              title="Log out"
+              aria-label="Log out"
+            >
+              <IconLogout className="h-5 w-5" />
+            </button>
+
+            <button
               onClick={() => navigate('/dashboard')}
               className="group flex items-center gap-3 rounded-full border border-white/5 bg-zinc-800/50 py-1 pl-1 pr-4 transition-all hover:bg-zinc-700/50"
               title="Your Profile"
@@ -461,15 +534,23 @@ const Layout: React.FC = () => {
           </div>
         </div>
 
-        <nav className="absolute bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-white/5 bg-zinc-950/95 px-2 backdrop-blur-xl md:hidden">
-          {navItems.slice(0, 5).map((item) => (
+        <nav className="fixed bottom-0 left-0 right-0 z-50 grid h-16 grid-cols-6 items-stretch border-t border-white/5 bg-zinc-950/95 px-1 backdrop-blur-xl md:hidden"
+          style={{
+            maxWidth: '100vw',
+            minHeight: '4rem',
+            boxShadow: '0 -2px 16px 0 rgba(0,0,0,0.25)',
+            WebkitTouchCallout: 'none',
+            WebkitUserSelect: 'none',
+            userSelect: 'none',
+          }}>
+          {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) => `flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-1 text-[10px] ${isActive ? 'bg-indigo-500/10 text-indigo-300' : 'text-zinc-500'}`}
+              className={({ isActive }) => `flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-1 text-[9px] ${isActive ? 'bg-indigo-500/10 text-indigo-300' : 'text-zinc-500'}`}
             >
-              {item.icon}
-              <span>{item.label}</span>
+              <span className="flex h-5 items-center">{item.icon}</span>
+              <span className="truncate">{item.label}</span>
             </NavLink>
           ))}
         </nav>

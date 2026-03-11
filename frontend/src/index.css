@@ -39,6 +39,7 @@
   --body-bg: radial-gradient(circle at top right, #18181b 0%, #09090b 100%);
   --scrollbar-thumb: #3f3f46;
   --scrollbar-hover: #52525b;
+  --color-emerald-400: #10b981;
   font-family: var(--app-font, "Inter"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   background-color: #09090b;
   color: #e4e4e7;
@@ -200,6 +201,7 @@ body {
   --color-indigo-600: #1f6feb;
   --color-indigo-700: #1158c7;
   --color-indigo-900: #0c2d6b;
+  --color-emerald-400: #10b981;
   --body-bg: linear-gradient(160deg, #0d1117 0%, #010409 100%);
   --scrollbar-thumb: #30363d;
   --scrollbar-hover: #484f58;
@@ -226,6 +228,7 @@ body {
   --color-indigo-600: #0078d4;
   --color-indigo-700: #005a9e;
   --color-indigo-900: #003a6b;
+  --color-emerald-400: #10b981;
   --body-bg: linear-gradient(160deg, #1e1e1e 0%, #181818 100%);
   --scrollbar-thumb: #3c3c3c;
   --scrollbar-hover: #505050;
@@ -252,6 +255,7 @@ body {
   --color-indigo-600: #bd93f9;
   --color-indigo-700: #9d5cd0;
   --color-indigo-900: #4c1d95;
+  --color-emerald-400: #10b981;
   --body-bg: linear-gradient(160deg, #282a36 0%, #21222c 100%);
   --scrollbar-thumb: #44475a;
   --scrollbar-hover: #6272a4;

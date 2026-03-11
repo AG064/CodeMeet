@@ -4,6 +4,7 @@ import api from '../api/axios';
 import FeedbackBanner from '../components/FeedbackBanner.tsx';
 import { IconUser } from '../components/Icons';
 import { toHandle } from '../utils/handle';
+import { getBackendBaseUrl } from '../utils/network';
 
 type PublicUser = {
   id: string;
@@ -18,6 +19,7 @@ type PublicBio = {
   primaryLanguage?: string;
   experienceLevel?: string;
   lookFor?: string;
+  city?: string;
   maxDistanceKm?: number;
   locationVisible?: boolean;
   age?: number;
@@ -28,8 +30,7 @@ type PublicProfile = {
   aboutMe?: string;
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '');
+const BACKEND_BASE_URL = getBackendBaseUrl();
 
 const PublicProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -41,17 +42,22 @@ const PublicProfile: React.FC = () => {
   const [blocking, setBlocking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [disconnecting, setDisconnecting] = useState<boolean>(false);
+  const [fatalError, setFatalError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
 
     const load = async () => {
       setLoading(true);
+      setFatalError(null);
       try {
-        const [{ data: u }, { data: b }, { data: p }] = await Promise.all([
+        const [{ data: u }, { data: b }, { data: p }, { data: connections }] = await Promise.all([
           api.get(`/users/${id}`),
           api.get(`/users/${id}/bio`).catch(() => ({ data: {} })),
-          api.get(`/users/${id}/profile`).catch(() => ({ data: {} }))
+          api.get(`/users/${id}/profile`).catch(() => ({ data: {} })),
+          api.get('/connections')
         ]);
 
         setUser({
@@ -66,14 +72,22 @@ const PublicProfile: React.FC = () => {
           primaryLanguage: b.primaryLanguage,
           experienceLevel: b.experienceLevel,
           lookFor: b.lookFor,
+          city: b.city,
           maxDistanceKm: b.maxDistanceKm,
           locationVisible: b.locationVisible !== false,
           age: b.age,
           ageVisible: b.ageVisible !== false,
         });
         setProfile({ aboutMe: p.aboutMe || '' });
-      } catch {
-        setUser(null);
+        setIsConnected(Array.isArray(connections) && connections.some((conn: any) => conn.id === u.id));
+      } catch (error: any) {
+        if (error?.response?.status === 403) {
+          setFatalError('Access forbidden. You do not have permission to view this profile.');
+        } else if (error?.response?.status === 401) {
+          setFatalError('Session expired or not authenticated. Please log in again.');
+        } else {
+          setUser(null);
+        }
       } finally {
         setLoading(false);
       }
@@ -81,6 +95,29 @@ const PublicProfile: React.FC = () => {
 
     load();
   }, [id]);
+  const handleDisconnect = async () => {
+    if (!user || disconnecting) return;
+    if (!window.confirm('Are you sure you want to disconnect from this user?')) return;
+    try {
+      setDisconnecting(true);
+      setActionError(null);
+      setActionSuccess(null);
+      await api.delete(`/connections/disconnect/${user.id}`);
+      setIsConnected(false);
+      setActionSuccess(`${user.name} was disconnected successfully.`);
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        setFatalError('Access forbidden. You do not have permission to disconnect from this user.');
+      } else if (error?.response?.status === 401) {
+        setFatalError('Session expired or not authenticated. Please log in again.');
+      } else {
+        console.error('Failed to disconnect:', error);
+        setActionError('Could not disconnect from this user right now.');
+      }
+    } finally {
+      setDisconnecting(false);
+    }
+  };
 
   const handleBlock = async () => {
     if (!user || blocking) return;
@@ -94,13 +131,38 @@ const PublicProfile: React.FC = () => {
         detail: { id: user.id, name: user.name }
       }));
       setActionSuccess(`${user.name} was blocked successfully.`);
-    } catch (error) {
-      console.error('Failed to block user:', error);
-      setActionError('Could not block this user right now.');
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        setFatalError('Access forbidden. You do not have permission to block this user.');
+      } else if (error?.response?.status === 401) {
+        setFatalError('Session expired or not authenticated. Please log in again.');
+      } else {
+        console.error('Failed to block user:', error);
+        setActionError('Could not block this user right now.');
+      }
     } finally {
       setBlocking(false);
     }
   };
+
+
+  if (fatalError) {
+    return (
+      <div className="flex h-full min-h-0 w-full items-center justify-center bg-transparent rounded-3xl shadow-2xl border border-white/5 animate-fade-in relative backdrop-blur-sm">
+        <div className="max-w-md w-full mx-auto p-8 bg-zinc-900/80 rounded-2xl border border-white/10 flex flex-col items-center gap-6">
+          <FeedbackBanner variant="error" className="w-full text-center">
+            {fatalError}
+          </FeedbackBanner>
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-2 px-6 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-500 transition-all"
+          >
+            Go back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return <div className="h-full flex items-center justify-center text-zinc-500">Loading profile...</div>;
@@ -155,6 +217,7 @@ const PublicProfile: React.FC = () => {
           <div className="p-3 rounded-xl bg-zinc-900/40 border border-white/5"><span className="text-zinc-500">Experience:</span> <span className="text-zinc-200">{bio?.experienceLevel || 'Not provided'}</span></div>
           <div className="p-3 rounded-xl bg-zinc-900/40 border border-white/5"><span className="text-zinc-500">Looking for:</span> <span className="text-zinc-200">{bio?.lookFor || 'Not provided'}</span></div>
           <div className="p-3 rounded-xl bg-zinc-900/40 border border-white/5"><span className="text-zinc-500">Age:</span> <span className="text-zinc-200">{bio?.ageVisible === false ? 'Hidden by user' : (bio?.age != null ? bio.age : 'Not provided')}</span></div>
+          <div className="p-3 rounded-xl bg-zinc-900/40 border border-white/5"><span className="text-zinc-500">City:</span> <span className="text-zinc-200">{bio?.locationVisible === false ? 'Hidden by user' : (bio?.city || 'Not provided')}</span></div>
           <div className="p-3 rounded-xl bg-zinc-900/40 border border-white/5"><span className="text-zinc-500">Match radius:</span> <span className="text-zinc-200">{bio?.locationVisible === false ? 'Hidden by user' : (bio?.maxDistanceKm != null ? `${bio.maxDistanceKm} km` : 'Not provided')}</span></div>
         </div>
       </div>
@@ -175,6 +238,15 @@ const PublicProfile: React.FC = () => {
         <button onClick={() => navigate('/chat')} className="px-4 py-2 rounded-lg border border-white/10 text-zinc-300 hover:bg-white/5">Back</button>
         {!actionSuccess && (
           <button onClick={() => navigate(`/chat/${user.id}`)} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white">Message</button>
+        )}
+        {isConnected && !actionSuccess && (
+          <button
+            onClick={handleDisconnect}
+            disabled={disconnecting}
+            className="px-4 py-2 rounded-lg bg-zinc-700 hover:bg-zinc-800 text-zinc-100 border border-white/10 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+          </button>
         )}
         <button
           onClick={handleBlock}

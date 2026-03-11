@@ -34,6 +34,9 @@ public class Bio {
     @Column(columnDefinition="TEXT")
     private String codingStyle;
 
+    @Column(columnDefinition="TEXT")
+    private String city;
+
     @Column(columnDefinition = "double precision")
     private Double latitude;
 

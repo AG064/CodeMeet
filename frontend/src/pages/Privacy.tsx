@@ -20,7 +20,7 @@ const Privacy: React.FC = () => {
       <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-4 text-sm text-zinc-300 leading-relaxed">
         <p>
           CodeMeet stores the account details needed to run the platform, including your email address, display name,
-          bio fields, GPS coordinates, match radius, profile text, connection state, and chat messages. When you upload a
+          bio fields, your chosen city label, internal GPS coordinates, match radius, profile text, connection state, and chat messages. When you upload a
           profile picture or message attachment, the file is stored by the backend and linked to your account or conversation.
         </p>
         <p>
@@ -29,9 +29,9 @@ const Privacy: React.FC = () => {
           profile or interact with you.
         </p>
         <p>
-          The privacy controls in Settings are saved to your account. If you hide your avatar, age, GPS-based match radius,
+          The privacy controls in Settings are saved to your account. If you hide your avatar, age, city, match radius,
           or last-seen data, those fields are removed from public profile responses and connection presence snapshots shown to
-          other signed-in users. Exact GPS coordinates are never returned from public profile endpoints.
+          other signed-in users. Exact GPS coordinates are never returned from public profile endpoints, but they are still used internally for spatial proximity filtering.
         </p>
         <p>
           You can update or remove profile content at any time from the dashboard and settings screens. Background images

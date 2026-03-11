@@ -72,12 +72,20 @@ public class ConnectionController {
         User recipient = userRepository.findById(recipientId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipient not found"));
 
+        if (!recommendationService.hasCompleteProfile(currentUser)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Complete your profile before sending connection requests");
+        }
+
         if (currentUser.getId().equals(recipient.getId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot connect with yourself");
         }
 
         if (recommendationService.isBlockedEitherDirection(currentUser, recipient)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot connect with this user");
+        }
+
+        if (!recommendationService.getRecommendationsForUser(currentUser, 50).contains(recipient.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipient not found");
         }
 
         Optional<Connection> existingRequest = connectionRepository.findAllConnectionsBetweenUsers(currentUser, recipient);

@@ -1,5 +1,6 @@
 package com.codemeet.backend.controller;
 
+import com.codemeet.backend.dto.RecommendationDto;
 import com.codemeet.backend.model.User;
 import com.codemeet.backend.repository.UserRepository;
 import com.codemeet.backend.service.RecommendationService;
@@ -36,17 +37,28 @@ public class RecommendationController {
         User currentUser = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        List<UUID> recommendedUserIds = recommendationService.getRecommendationsForUser(currentUser, 10);
-
-        List<Map<String, String>> response = recommendedUserIds.stream()
+        List<Map<String, String>> response = recommendationService.getRecommendationsForUser(currentUser, 10).stream()
                 .map(id -> {
                     Map<String, String> map = new HashMap<>();
                     map.put("id", id.toString());
                     return map;
                 })
-                .collect(Collectors.toList());
+                .toList();
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/recommendations/{userId}/score")
+    public ResponseEntity<RecommendationDto> getRecommendationScore(@PathVariable UUID userId, Authentication authentication) {
+        User currentUser = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        RecommendationService.RecommendationMatch match = recommendationService.getRecommendationMatchesForUser(currentUser, 10).stream()
+                .filter(candidate -> candidate.userId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recommendation not found"));
+
+        return ResponseEntity.ok(new RecommendationDto(match.userId(), match.matchScore(), match.distanceKm()));
     }
 
     @PostMapping("/recommendations/skip/{userId}")

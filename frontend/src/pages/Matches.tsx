@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import FeedbackBanner from '../components/FeedbackBanner.tsx';
 import { IconUser, IconSearch } from '../components/Icons';
+import { formatDistanceKm } from '../utils/location';
+import { getBackendBaseUrl } from '../utils/network';
 
-const BACKEND_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
+const BACKEND_BASE_URL = getBackendBaseUrl();
 
 type Candidate = {
     id: string;
@@ -12,6 +14,7 @@ type Candidate = {
     bio?: {
         primaryLanguage?: string;
         experienceLevel?: string;
+        city?: string;
         maxDistanceKm?: number;
         locationVisible?: boolean;
         lookFor?: string;
@@ -19,6 +22,7 @@ type Candidate = {
         ageVisible?: boolean;
     };
     matchScore?: number;
+    distanceKm?: number;
 };
 
 const Matches: React.FC = () => {
@@ -26,6 +30,8 @@ const Matches: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [actionError, setActionError] = useState<string | null>(null);
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+    const [fatalError, setFatalError] = useState<string | null>(null);
+    const navigate = typeof window !== 'undefined' ? (window as any).useNavigate?.() || (() => {}) : () => {};
 
     useEffect(() => {
         fetchRecommendations();
@@ -46,6 +52,7 @@ const Matches: React.FC = () => {
     const fetchRecommendations = async () => {
         try {
             setLoading(true);
+            setFatalError(null);
             const { data: recs } = await api.get('/recommendations');
             
             if (!recs || recs.length === 0) {
@@ -58,9 +65,10 @@ const Matches: React.FC = () => {
             const detailedCandidates: Candidate[] = await Promise.all(
                 recs.map(async (rec: { id: string }) => {
                     try {
-                        const [userRes, bioRes] = await Promise.all([
+                        const [userRes, bioRes, scoreRes] = await Promise.all([
                             api.get(`/users/${rec.id}`),
-                            api.get(`/users/${rec.id}/bio`).catch(() => ({ data: {} }))
+                            api.get(`/users/${rec.id}/bio`).catch(() => ({ data: {} })),
+                            api.get(`/recommendations/${rec.id}/score`).catch(() => ({ data: {} }))
                         ]);
 
                         return {
@@ -70,25 +78,40 @@ const Matches: React.FC = () => {
                             bio: {
                                 primaryLanguage: bioRes.data?.primaryLanguage || 'N/A',
                                 experienceLevel: bioRes.data?.experienceLevel || 'Undisclosed',
+                                city: bioRes.data?.city,
                                 maxDistanceKm: bioRes.data?.maxDistanceKm,
                                 locationVisible: bioRes.data?.locationVisible !== false,
                                 age: bioRes.data?.age,
                                 ageVisible: bioRes.data?.ageVisible !== false,
-                            }
+                            },
+                            matchScore: typeof scoreRes.data?.matchScore === 'number' ? scoreRes.data.matchScore : undefined,
+                            distanceKm: typeof scoreRes.data?.distanceKm === 'number' ? scoreRes.data.distanceKm : undefined,
                         };
-                    } catch {
+                    } catch (error: any) {
+                        if (error?.response?.status === 403) {
+                            setFatalError('Access forbidden. You do not have permission to view recommendations.');
+                        } else if (error?.response?.status === 401) {
+                            setFatalError('Session expired or not authenticated. Please log in again.');
+                        }
                         return { id: rec.id, name: 'Error', bio: {} } as Candidate;
                     }
                 })
             );
 
             setCandidates(detailedCandidates);
-        } catch (err) {
-            console.error(err);
+        } catch (err: any) {
+            if (err?.response?.status === 403) {
+                setFatalError('Access forbidden. You do not have permission to view recommendations.');
+            } else if (err?.response?.status === 401) {
+                setFatalError('Session expired or not authenticated. Please log in again.');
+            } else {
+                console.error(err);
+            }
         } finally {
             setLoading(false);
         }
     };
+
 
     const handleConnect = async (userId: string) => {
         try {
@@ -96,9 +119,15 @@ const Matches: React.FC = () => {
             setActionSuccess(null);
             await api.post(`/connections/request/${userId}`);
             setCandidates(prev => prev.filter(c => c.id !== userId));
-        } catch (err) {
-            console.error(err);
-            setActionError('Could not send the connection request.');
+        } catch (err: any) {
+            if (err?.response?.status === 403) {
+                setFatalError('Access forbidden. You do not have permission to connect.');
+            } else if (err?.response?.status === 401) {
+                setFatalError('Session expired or not authenticated. Please log in again.');
+            } else {
+                console.error(err);
+                setActionError('Could not send the connection request.');
+            }
         }
     };
 
@@ -108,9 +137,15 @@ const Matches: React.FC = () => {
             setActionSuccess(null);
             await api.post(`/recommendations/skip/${userId}`);
             setCandidates(prev => prev.filter(c => c.id !== userId));
-        } catch (err) {
-            console.error("Failed to skip user:", err);
-            setActionError('Could not skip this user right now.');
+        } catch (err: any) {
+            if (err?.response?.status === 403) {
+                setFatalError('Access forbidden. You do not have permission to skip users.');
+            } else if (err?.response?.status === 401) {
+                setFatalError('Session expired or not authenticated. Please log in again.');
+            } else {
+                console.error("Failed to skip user:", err);
+                setActionError('Could not skip this user right now.');
+            }
         }
     };
 
@@ -123,11 +158,35 @@ const Matches: React.FC = () => {
             window.dispatchEvent(new CustomEvent('codemeet:user-blocked', {
                 detail: { id: candidate.id, name: candidate.name }
             }));
-        } catch (err) {
-            console.error('Failed to block user:', err);
-            setActionError('Could not block this user right now.');
+        } catch (err: any) {
+            if (err?.response?.status === 403) {
+                setFatalError('Access forbidden. You do not have permission to block users.');
+            } else if (err?.response?.status === 401) {
+                setFatalError('Session expired or not authenticated. Please log in again.');
+            } else {
+                console.error('Failed to block user:', err);
+                setActionError('Could not block this user right now.');
+            }
         }
     };
+
+    if (fatalError) {
+        return (
+            <div className="flex h-full min-h-0 w-full items-center justify-center bg-transparent rounded-3xl shadow-2xl border border-white/5 animate-fade-in relative backdrop-blur-sm">
+                <div className="max-w-md w-full mx-auto p-8 bg-zinc-900/80 rounded-2xl border border-white/10 flex flex-col items-center gap-6">
+                    <FeedbackBanner variant="error" className="w-full text-center">
+                        {fatalError}
+                    </FeedbackBanner>
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="mt-2 px-6 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-500 transition-all"
+                    >
+                        Go back
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) return (
         <div className="flex items-center justify-center h-full text-zinc-500 font-medium animate-pulse">
@@ -189,9 +248,27 @@ const Matches: React.FC = () => {
                                 <div className="flex items-center gap-2 text-zinc-500 text-xs mb-4">
                                     <span>{rec.bio?.ageVisible === false ? 'Age hidden' : (rec.bio?.age != null ? `${rec.bio.age} yrs` : 'Age hidden')}</span>
                                     <span>•</span>
-                                    <span className="truncate max-w-[140px]">{rec.bio?.locationVisible === false ? 'Radius hidden' : (rec.bio?.maxDistanceKm != null ? `${rec.bio.maxDistanceKm} km radius` : 'Radius unavailable')}</span>
+                                    <span className="truncate max-w-[140px]">{rec.bio?.locationVisible === false ? 'Location hidden' : (rec.bio?.city || 'City unavailable')}</span>
                                     <span>•</span>
                                     <span className="text-indigo-400 font-mono">ID: {rec.id.split('-')[0]}</span>
+                                </div>
+
+                                <div className="mb-4 flex flex-wrap gap-2 text-[11px]">
+                                    {rec.bio?.locationVisible !== false && rec.distanceKm != null && (
+                                        <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">
+                                            {formatDistanceKm(rec.distanceKm)}
+                                        </span>
+                                    )}
+                                    {rec.matchScore != null && (
+                                        <span className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 text-indigo-300">
+                                            Match score {rec.matchScore}
+                                        </span>
+                                    )}
+                                    {rec.bio?.locationVisible !== false && rec.bio?.maxDistanceKm != null && (
+                                        <span className="rounded-full border border-white/10 bg-zinc-900/50 px-2.5 py-1 text-zinc-400">
+                                            Radius {rec.bio.maxDistanceKm} km
+                                        </span>
+                                    )}
                                 </div>
                                 
                                 <div className="flex-1 space-y-2 mb-4">
@@ -203,6 +280,10 @@ const Matches: React.FC = () => {
                                         <div className="flex-1 bg-zinc-900/50 rounded-lg p-3 border border-white/5">
                                             <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Experience</div>
                                             <div className="text-zinc-300 text-sm">{rec.bio?.experienceLevel}</div>
+                                        </div>
+                                        <div className="flex-1 bg-zinc-900/50 rounded-lg p-3 border border-white/5">
+                                            <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">City</div>
+                                            <div className="text-zinc-300 text-sm">{rec.bio?.locationVisible === false ? 'Hidden' : (rec.bio?.city || 'Unavailable')}</div>
                                         </div>
                                     </div>
                                 </div>

@@ -4,9 +4,9 @@ import api, { getApiErrorMessage } from '../api/axios';
 import FeedbackBanner from '../components/FeedbackBanner.tsx';
 import { IconCamera, IconCode, IconChart, IconTarget, IconLaptop, IconMapPin, IconWarning, IconSearch, IconNetwork, IconMessage, IconCheck, IconUser, IconMore } from '../components/Icons';
 import { toHandle } from '../utils/handle';
+import { getBackendBaseUrl } from '../utils/network';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '');
+const BACKEND_BASE_URL = getBackendBaseUrl();
 
 type Bio = {
     primaryLanguage?: string;
@@ -14,6 +14,7 @@ type Bio = {
     lookFor?: string;
     preferredOs?: string;
     codingStyle?: string;
+    city?: string;
     latitude?: number;
     longitude?: number;
     maxDistanceKm?: number;
@@ -55,8 +56,7 @@ const Dashboard: React.FC = () => {
     const calculateCompletion = (bioData: Bio | null): number => {
         if (!bioData) return 0;
 
-        // Location counts as one completed profile item only when all three location fields are present.
-        const hasLocationConfigured = bioData.latitude != null && bioData.longitude != null && bioData.maxDistanceKm != null;
+        const hasLocationConfigured = Boolean(bioData.city && bioData.latitude != null && bioData.longitude != null && bioData.maxDistanceKm != null);
 
         const values = [
             bioData.primaryLanguage,
@@ -86,21 +86,33 @@ const Dashboard: React.FC = () => {
                 const userRes = await api.get<CurrentUser>('/me');
                 setUser(userRes.data);
                 setAliasInput(userRes.data?.name || '');
-                
                 try {
                     const bioRes = await api.get<Bio>('/me/bio');
                     setBio(bioRes.data);
-                } catch {
-                    // Bio is optional for new accounts.
-                }
+                } catch {}
                 try {
                     const profileRes = await api.get<ProfileResponse>('/me/profile');
                     setAboutMe(profileRes.data?.aboutMe || '');
-                } catch {
-                    // Profile text is optional.
+                } catch {}
+            } catch (error: any) {
+                const status = error?.response?.status;
+                if (status === 403) {
+                    setFeedback({ variant: 'error', message: 'You do not have permission to access this resource. [Go back]' });
+                    setUser(null);
+                    return;
                 }
-            } catch {
-                navigate('/login');
+                if (status === 404) {
+                    setFeedback({ variant: 'error', message: 'Resource not found. [Go back]' });
+                    setUser(null);
+                    return;
+                }
+                if (status === 401) {
+                    setFeedback({ variant: 'error', message: 'You are not authenticated. Please log in.' });
+                    setUser(null);
+                    return;
+                }
+                setFeedback({ variant: 'error', message: getApiErrorMessage(error, 'Failed to load profile data') });
+                setUser(null);
             }
         };
         fetchData();
@@ -178,8 +190,19 @@ const Dashboard: React.FC = () => {
     };
 
     if (!user) return (
-        <div className="flex items-center justify-center h-full text-zinc-500 font-medium animate-pulse">
-            LOADING PROFILE DATA...
+        <div className="flex items-center justify-center h-full text-zinc-500 font-medium animate-fade-in">
+            {feedback && feedback.variant === 'error' && feedback.message.includes('[Go back]') ? (
+                <span>
+                    {feedback.message.replace(' [Go back]', '')}
+                    <button
+                        type="button"
+                        className="ml-2 underline text-indigo-300 hover:text-indigo-400"
+                        onClick={() => navigate(-1)}
+                    >
+                        Go back
+                    </button>
+                </span>
+            ) : feedback && feedback.variant === 'error' ? feedback.message : 'LOADING PROFILE DATA...'}
         </div>
     );
 
@@ -208,7 +231,7 @@ const Dashboard: React.FC = () => {
                     </div>
 
                     {isProfileMenuOpen && (
-                        <div className="absolute top-12 right-4 z-20 w-44 rounded-xl border border-white/10 bg-zinc-900/95 p-2 text-left shadow-xl backdrop-blur-xl">
+                        <div className="absolute top-12 right-4 z-40 w-44 rounded-xl border border-white/10 bg-zinc-900/95 p-2 text-left shadow-xl backdrop-blur-xl">
                             <button
                                 onClick={() => {
                                     setIsProfileMenuOpen(false);
@@ -260,7 +283,7 @@ const Dashboard: React.FC = () => {
                         </div>
                         <div className="absolute inset-0 rounded-full border border-indigo-500/30 scale-110 animate-pulse pointer-events-none"></div>
                         
-                        <label className="absolute bottom-0 right-0 bg-zinc-800 text-white p-2 rounded-full cursor-pointer hover:bg-indigo-600 transition-colors shadow-lg border border-zinc-700 z-20">
+                        <label className="absolute bottom-0 right-0 bg-zinc-800 text-white p-2 rounded-full cursor-pointer hover:bg-indigo-600 transition-colors shadow-lg border border-zinc-700 z-10">
                             <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={uploading} />
                             <span className="text-xs font-bold">{uploading ? '...' : <IconCamera className="w-4 h-4" />}</span>
                         </label>
@@ -363,7 +386,7 @@ const Dashboard: React.FC = () => {
                                               { label: 'Age', value: bio.age != null ? String(bio.age) : '', icon: <IconUser className="w-4 h-4" /> },
                                    { label: 'OS', value: bio.preferredOs, icon: <IconLaptop className="w-4 h-4" /> },
                                               { label: 'Match Radius', value: bio.maxDistanceKm != null ? `${bio.maxDistanceKm} km` : '', icon: <IconMapPin className="w-4 h-4" /> },
-                                              { label: 'GPS Location', value: bio.latitude != null && bio.longitude != null ? `${bio.latitude.toFixed(3)}, ${bio.longitude.toFixed(3)}` : '', icon: <IconMapPin className="w-4 h-4" /> },
+                                              { label: 'City', value: bio.city || '', icon: <IconMapPin className="w-4 h-4" /> },
                                 ].map((item, i) => (
                                    <div key={i} className="flex justify-between items-center p-3 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700 transition-colors">
                                       <span className="text-zinc-500 text-sm flex items-center gap-2">{item.icon} {item.label}</span>

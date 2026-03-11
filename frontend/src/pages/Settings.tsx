@@ -113,6 +113,7 @@ function readLocalPrivacySettings(): PrivacySettings {
   }
 }
 
+
 const Settings: React.FC = () => {
   const [settings, setSettings] = useState<PrivacySettings>(DEFAULT_PRIVACY_SETTINGS);
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
@@ -131,6 +132,7 @@ const Settings: React.FC = () => {
   const [customColors, setCustomColors] = useState<CustomColors>(() => {
     try { return JSON.parse(localStorage.getItem(CUSTOM_THEME_KEY) || 'null') || DEFAULT_CUSTOM; } catch { return DEFAULT_CUSTOM; }
   });
+  const [fatalError, setFatalError] = useState<string | null>(null);
 
   const toggle = (key: keyof PrivacySettings) => {
     setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -223,9 +225,15 @@ const Settings: React.FC = () => {
 
         setSettings(next);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
+      } catch (error: any) {
         if (cancelled) return;
-        setSettings(fallback);
+        if (error?.response?.status === 403) {
+          setFatalError('Access forbidden. You do not have permission to view settings.');
+        } else if (error?.response?.status === 401) {
+          setFatalError('Session expired or not authenticated. Please log in again.');
+        } else {
+          setSettings(fallback);
+        }
       } finally {
         if (!cancelled) {
           setLoadingPrivacy(false);
@@ -244,9 +252,15 @@ const Settings: React.FC = () => {
       try {
         const { data } = await api.get('/block');
         setBlockedUsers(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error('Failed to load blocked users:', error);
-        setFeedback({ variant: 'error', message: 'Could not load your block list right now.' });
+      } catch (error: any) {
+        if (error?.response?.status === 403) {
+          setFatalError('Access forbidden. You do not have permission to view your block list.');
+        } else if (error?.response?.status === 401) {
+          setFatalError('Session expired or not authenticated. Please log in again.');
+        } else {
+          console.error('Failed to load blocked users:', error);
+          setFeedback({ variant: 'error', message: 'Could not load your block list right now.' });
+        }
       }
     };
 
@@ -321,9 +335,15 @@ const Settings: React.FC = () => {
       localStorage.setItem(BG_KEY, JSON.stringify(bgPref));
       if (selectedTheme === 'custom') localStorage.setItem(CUSTOM_THEME_KEY, JSON.stringify(customColors));
       setFeedback({ variant: 'success', message: 'Privacy settings saved successfully.' });
-    } catch (error) {
-      console.error('Failed to save privacy settings:', error);
-      setFeedback({ variant: 'error', message: 'Could not save your privacy settings right now.' });
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        setFatalError('Access forbidden. You do not have permission to update settings.');
+      } else if (error?.response?.status === 401) {
+        setFatalError('Session expired or not authenticated. Please log in again.');
+      } else {
+        console.error('Failed to save privacy settings:', error);
+        setFeedback({ variant: 'error', message: 'Could not save your privacy settings right now.' });
+      }
     } finally {
       setSavingPrivacy(false);
     }
@@ -338,10 +358,34 @@ const Settings: React.FC = () => {
       window.dispatchEvent(new CustomEvent('codemeet:user-unblocked', {
         detail: { id, name: userToUnblock?.name }
       }));
-    } catch (error) {
-      console.error('Failed to unblock user:', error);
-      setFeedback({ variant: 'error', message: 'Could not unblock this user right now.' });
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        setFatalError('Access forbidden. You do not have permission to unblock users.');
+      } else if (error?.response?.status === 401) {
+        setFatalError('Session expired or not authenticated. Please log in again.');
+      } else {
+        console.error('Failed to unblock user:', error);
+        setFeedback({ variant: 'error', message: 'Could not unblock this user right now.' });
+      }
     }
+  }
+
+  if (fatalError) {
+    return (
+      <div className="flex h-full min-h-0 w-full items-center justify-center bg-transparent rounded-3xl shadow-2xl border border-white/5 animate-fade-in relative backdrop-blur-sm">
+        <div className="max-w-md w-full mx-auto p-8 bg-zinc-900/80 rounded-2xl border border-white/10 flex flex-col items-center gap-6">
+          <FeedbackBanner variant="error" className="w-full text-center">
+            {fatalError}
+          </FeedbackBanner>
+          <button
+            onClick={() => window.history.back()}
+            className="mt-2 px-6 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-500 transition-all"
+          >
+            Go back
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -548,7 +592,7 @@ const Settings: React.FC = () => {
 
         {[
           { key: 'hideAvatar', label: 'Hide avatar from public profile' },
-          { key: 'hideLocation', label: 'Hide GPS match radius from public profile' },
+          { key: 'hideLocation', label: 'Hide city and match radius from public profile' },
           { key: 'hideAge', label: 'Hide age from public profile' },
           { key: 'hideLastSeen', label: 'Hide last seen status' },
         ].map((item) => (

@@ -10,9 +10,9 @@ INSERT INTO profiles (id, about_me, user_id) VALUES
 ('aaaaaaa2-aaaa-4aaa-8aaa-aaaaaaaaaaa2', 'Hi! I''m Sam, a frontend engineer who enjoys clean UI systems and mentoring.', '22222222-2222-4222-8222-222222222222'),
 ('aaaaaaa3-aaaa-4aaa-8aaa-aaaaaaaaaaa3', 'Hi! I''m Riley, a polyglot developer looking for practical collaboration partners.', '33333333-3333-4333-8333-333333333333');
 
-INSERT INTO bios (id, coding_style, experience_level, look_for, preferred_os, primary_language, latitude, longitude, max_distance_km, age, user_id) VALUES
-('bbbbbbb1-bbbb-4bbb-8bbb-bbbbbbbbbbb1', 'Night Owl', 'Senior', 'Mentor', 'Linux', 'Java', 59.437000, 24.753600, 25, 31, '11111111-1111-4111-8111-111111111111'),
-('bbbbbbb2-bbbb-4bbb-8bbb-bbbbbbbbbbb2', 'Early Bird', 'Mid', 'Coding Buddy', 'macOS', 'TypeScript', 59.431200, 24.745300, 20, 28, '22222222-2222-4222-8222-222222222222'),
-('bbbbbbb3-bbbb-4bbb-8bbb-bbbbbbbbbbb3', 'Night Owl', 'Mid', 'Networking', 'Windows', 'Python', 59.420500, 24.799400, 30, 29, '33333333-3333-4333-8333-333333333333');
+INSERT INTO bios (id, coding_style, experience_level, look_for, preferred_os, primary_language, city, latitude, longitude, max_distance_km, age, user_id) VALUES
+('bbbbbbb1-bbbb-4bbb-8bbb-bbbbbbbbbbb1', 'Night Owl', 'Senior', 'Mentor', 'Linux', 'Java', 'Tallinn', 59.437000, 24.753600, 25, 31, '11111111-1111-4111-8111-111111111111'),
+('bbbbbbb2-bbbb-4bbb-8bbb-bbbbbbbbbbb2', 'Early Bird', 'Mid', 'Coding Buddy', 'macOS', 'TypeScript', 'Tallinn', 59.431200, 24.745300, 20, 28, '22222222-2222-4222-8222-222222222222'),
+('bbbbbbb3-bbbb-4bbb-8bbb-bbbbbbbbbbb3', 'Night Owl', 'Mid', 'Networking', 'Windows', 'Python', 'Tallinn', 59.420500, 24.799400, 30, 29, '33333333-3333-4333-8333-333333333333');
 
 COMMIT;

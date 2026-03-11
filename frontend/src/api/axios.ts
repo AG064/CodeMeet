@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { getApiBaseUrl } from '../utils/network';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const API_BASE_URL = getApiBaseUrl();
 
 type ApiErrorResponse = {
   message?: string;
@@ -23,11 +24,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Do not force logout or redirect. Let components handle error statuses.
     if (error.response?.status === 401 || error.response?.status === 403) {
       localStorage.removeItem('token');
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-        window.location.href = '/login';
-      }
     }
     return Promise.reject(error);
   }

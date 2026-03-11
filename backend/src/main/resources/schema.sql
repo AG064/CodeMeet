@@ -25,6 +25,9 @@ END IF;
 END $$ ^
 
 ALTER TABLE IF EXISTS bios
+    ADD COLUMN IF NOT EXISTS city text ^
+
+ALTER TABLE IF EXISTS bios
     ADD COLUMN IF NOT EXISTS latitude double precision ^
 
 ALTER TABLE IF EXISTS bios
@@ -38,6 +41,8 @@ DROP COLUMN IF EXISTS is_online ^
 
 ALTER TABLE IF EXISTS bios
     ADD COLUMN IF NOT EXISTS location geography(Point, 4326) ^
+
+CREATE INDEX IF NOT EXISTS bios_location_gix ON bios USING GIST (location) ^
 
 UPDATE bios
 SET location = CASE

@@ -125,27 +125,25 @@ public class RecommendationService {
                 .toList();
     }
 
-    public List<User> getBlockedUsers(User currentUser) {
-        return connectionRepository.findBlockedUsersForUser(currentUser).stream()
-                .map(Connection::getRecipient)
-                .toList();
+    public boolean hasCompleteProfile(User user) {
+        Bio bio = bioRepository.findByUser(user).orElse(null);
+        return hasCompleteProfile(bio);
     }
 
-    public List<UUID> getRecommendationsForUser(User currentUser, int limit) {
+    public List<RecommendationMatch> getRecommendationMatchesForUser(User currentUser, int limit) {
         Bio currentUserBio = bioRepository.findByUser(currentUser).orElse(null);
 
-        if (currentUserBio == null || currentUserBio.getLatitude() == null || currentUserBio.getLongitude() == null || currentUserBio.getMaxDistanceKm() == null) {
+        if (!hasCompleteProfile(currentUserBio)) {
             return new ArrayList<>();
         }
 
         LocalDateTime skipCutoff = LocalDateTime.now().minusDays(SKIP_EXCLUSION_DAYS);
         Set<UUID> excludedUserIds = new HashSet<>();
 
-        // Exclude the current user, any existing relationship, and recent skips before scoring.
         excludedUserIds.add(currentUser.getId());
         excludedUserIds.addAll(connectionRepository.findRelatedUserIdsExcludingSkipped(currentUser.getId()));
         excludedUserIds.addAll(connectionRepository.findActiveSkippedRecipientIds(currentUser.getId(), skipCutoff));
-    
+
         List<NearbyBioProjection> nearbyCandidates = bioRepository.findNearbyCandidateDistances(
             currentUser.getId(),
             currentUserBio.getLatitude(),
@@ -158,29 +156,62 @@ public class RecommendationService {
         }
 
         Map<UUID, Double> distanceKmByUserId = nearbyCandidates.stream()
-                .collect(Collectors.toMap(NearbyBioProjection::getUserId, projection -> projection.getDistanceMeters() / METERS_PER_KILOMETER));
+            .collect(Collectors.toMap(NearbyBioProjection::getUserId, projection -> projection.getDistanceMeters() / METERS_PER_KILOMETER));
 
         List<Bio> eligibleBios = bioRepository.findByUserIdIn(distanceKmByUserId.keySet()).stream()
-                .filter(bio -> !excludedUserIds.contains(bio.getUser().getId()))
-                .filter(bio -> bio.getLatitude() != null && bio.getLongitude() != null && bio.getMaxDistanceKm() != null)
-                .collect(Collectors.toList());
+            .filter(bio -> !excludedUserIds.contains(bio.getUser().getId()))
+            .filter(bio -> bio.getLatitude() != null && bio.getLongitude() != null && bio.getMaxDistanceKm() != null)
+            .toList();
 
-        // Stronger compatibility signals are added first, then weaker tie-breakers refine the order.
-        List<Map.Entry<Bio, Integer>> scoredBios = eligibleBios.stream()
-                .map(bio -> Map.entry(bio, calculateScore(currentUserBio, bio, distanceKmByUserId.getOrDefault(bio.getUser().getId(), Double.MAX_VALUE))))
-                .filter(entry -> entry.getValue() >= MIN_RECOMMENDATION_SCORE)
-                .sorted(Comparator.<Map.Entry<Bio, Integer>>comparingInt(Map.Entry::getValue).reversed())
-                .collect(Collectors.toList());
+        return eligibleBios.stream()
+            .map(bio -> new RecommendationMatch(
+                bio.getUser().getId(),
+                calculateScore(currentUserBio, bio, distanceKmByUserId.getOrDefault(bio.getUser().getId(), Double.MAX_VALUE)),
+                distanceKmByUserId.getOrDefault(bio.getUser().getId(), Double.MAX_VALUE)
+            ))
+            .filter(match -> match.matchScore() >= MIN_RECOMMENDATION_SCORE)
+            .sorted(Comparator.comparingInt(RecommendationMatch::matchScore).reversed()
+                .thenComparingDouble(RecommendationMatch::distanceKm))
+            .limit(limit)
+            .toList();
+        }
 
-        return scoredBios.stream()
-                .limit(limit)
-                .map(entry -> entry.getKey().getUser().getId())
+    public List<User> getBlockedUsers(User currentUser) {
+        return connectionRepository.findBlockedUsersForUser(currentUser).stream()
+                .map(Connection::getRecipient)
+                .toList();
+    }
+
+    public List<UUID> getRecommendationsForUser(User currentUser, int limit) {
+        return getRecommendationMatchesForUser(currentUser, limit).stream()
+            .map(RecommendationMatch::userId)
                 .collect(Collectors.toList());
     }
 
     private User requireUser(UUID userId, String message) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException(message));
+    }
+
+    private boolean hasCompleteProfile(Bio bio) {
+        if (bio == null) {
+            return false;
+        }
+
+        return hasText(bio.getPrimaryLanguage())
+                && hasText(bio.getExperienceLevel())
+                && hasText(bio.getLookFor())
+                && hasText(bio.getPreferredOs())
+                && hasText(bio.getCodingStyle())
+                && hasText(bio.getCity())
+                && bio.getLatitude() != null
+                && bio.getLongitude() != null
+                && bio.getMaxDistanceKm() != null
+                && bio.getAge() != null;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isBlank();
     }
 
     private int calculateScore(Bio current, Bio candidate, double distanceKm) {
@@ -236,5 +267,8 @@ public class RecommendationService {
         // A closer candidate earns more of the distance score, up to MAX_DISTANCE_SCORE.
         double closeness = 1 - (distanceKm / maxDistanceKm);
         return (int) Math.round(Math.max(0, closeness) * MAX_DISTANCE_SCORE);
+    }
+
+    public record RecommendationMatch(UUID userId, int matchScore, double distanceKm) {
     }
 }
