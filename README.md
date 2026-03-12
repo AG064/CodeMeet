@@ -2,6 +2,7 @@
 
 > A full-stack platform that connects developers, programmers, and hobbyists based on their programming languages, interests, and personal characteristics.
 
+If you want to contribute or have any issues, please let us know!
 ---
 
 ## Overview
@@ -322,3 +323,4 @@ All `/api/**` routes except `/api/auth/**` require an `Authorization: Bearer <to
 | POST | `/api/chat/read/{id}` | Mark a chat as read |
 | POST | `/api/chat/send/{id}` | REST fallback for sending a message |
 | POST | `/api/chat/upload/{id}` | Upload a chat attachment |
+
