@@ -120,10 +120,40 @@ const SetupBio: React.FC = () => {
     preloadBio();
   }, [navigate]);
 
+
   const onChange = (field: keyof BioForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
+
+  // Geocode city input automatically
+  useEffect(() => {
+    const city = form.city.trim();
+    if (!city) {
+      // If city is cleared, also clear coordinates
+      if (form.latitude || form.longitude) {
+        setForm((prev) => ({ ...prev, latitude: '', longitude: '' }));
+      }
+      return;
+    }
+    let ignore = false;
+    // Only geocode if city changed and not currently locating
+    if (city && !locating) {
+      (async () => {
+        const geo = await geocodeCity(city);
+        if (!ignore) {
+          if (geo) {
+            setForm((prev) => ({ ...prev, latitude: geo.latitude.toFixed(6), longitude: geo.longitude.toFixed(6) }));
+            setGpsStatus('Coordinates set for city.');
+          } else {
+            setForm((prev) => ({ ...prev, latitude: '', longitude: '' }));
+            setGpsStatus('Could not find coordinates for this city.');
+          }
+        }
+      })();
+    }
+    return () => { ignore = true; };
+  }, [form.city]);
 
   const onSelectOption = (field: keyof BioForm, option: string) => {
     const current = splitCsv(form[field]);
