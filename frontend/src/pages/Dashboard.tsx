@@ -390,7 +390,7 @@ const Dashboard: React.FC = () => {
                                 ].map((item, i) => (
                                    <div key={i} className="flex justify-between items-center p-3 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700 transition-colors">
                                       <span className="text-zinc-500 text-sm flex items-center gap-2">{item.icon} {item.label}</span>
-                                      <span className="text-zinc-200 font-medium text-sm">{item.value || '—'}</span>
+                                      <span className="text-zinc-200 font-medium text-sm">{item.value || '-'}</span>
                                    </div>
                                 ))}
                             </div>

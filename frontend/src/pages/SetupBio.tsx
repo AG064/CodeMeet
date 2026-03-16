@@ -460,7 +460,7 @@ const SetupBio: React.FC = () => {
                   <div className="flex items-center justify-between gap-4">
                     <label className="text-xs uppercase tracking-wider text-zinc-500 font-bold">Maximum recommendation radius</label>
                     <div className="rounded-full bg-indigo-600/15 border border-indigo-500/30 px-3 py-1 text-sm font-semibold text-indigo-300 min-w-[84px] text-center">
-                      {form.maxDistanceKm || '—'} km
+                      {form.maxDistanceKm || '-'} km
                     </div>
                   </div>
                   <input
@@ -508,7 +508,7 @@ const SetupBio: React.FC = () => {
                 <textarea
                   value={aboutMe}
                   onChange={(e) => { if (e.target.value.length <= 1000) setAboutMe(e.target.value); }}
-                  placeholder="Tell others a bit about yourself — what you're working on, what motivates you, or anything you'd like people to know..."
+                  placeholder="Tell others a bit about yourself - what you're working on, what motivates you, or anything you'd like people to know..."
                   rows={4}
                   className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-200 placeholder-zinc-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all text-sm resize-none"
                 />
@@ -575,7 +575,7 @@ const SetupBio: React.FC = () => {
               </div>
               <div className="rounded-xl border border-white/5 bg-zinc-900/40 px-4 py-3">
                 <div className="text-xs uppercase tracking-wider text-zinc-500 mb-1">Spatial filter</div>
-                <div className="text-zinc-200">Only candidates inside this radius — and inside theirs — will be recommended.</div>
+                <div className="text-zinc-200">Only candidates inside this radius - and inside theirs - will be recommended.</div>
               </div>
             </div>
 

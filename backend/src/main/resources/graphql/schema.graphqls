@@ -1,0 +1,48 @@
+type User {
+  id: ID!
+  name: String
+  profilePicture: String
+  bio: Bio
+  profile: Profile
+}
+
+type Bio {
+  id: ID!
+  primaryLanguage: String
+  experienceLevel: String
+  lookFor: String
+  preferredOs: String
+  codingStyle: String
+  city: String
+  latitude: Float
+  longitude: Float
+  maxDistanceKm: Int
+  age: Int
+  user: User
+}
+
+type Profile {
+  id: ID!
+  aboutMe: String
+  user: User
+}
+
+type PresenceChange {
+  userId: ID!
+  becameOffline: Boolean!
+}
+
+type Query {
+  user(id: ID!): User
+  bio(id: ID!): Bio
+  profile(id: ID!): Profile
+  me: User
+  myBio: Bio
+  myProfile: Profile
+  recommendations: [User!]
+  connections: [User!]
+}
+
+type Subscription {
+  presenceChanged: PresenceChange
+}
