@@ -7,7 +7,15 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class BackendApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(BackendApplication.class, args);
+        SpringApplication app = new SpringApplication(BackendApplication.class);
+        // Support a short developer flag -d or --dev to activate the 'dev' profile which enables the playground
+        for (String arg : args) {
+            if ("-d".equals(arg) || "--dev".equals(arg)) {
+                app.setAdditionalProfiles("dev");
+                break;
+            }
+        }
+        app.run(args);
     }
 
 }

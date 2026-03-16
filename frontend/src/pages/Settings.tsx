@@ -28,11 +28,11 @@ const BUG_REPORT_URL = import.meta.env.VITE_BUG_REPORT_URL || `${GITEA_URL.repla
 
 const FONT_PRESETS = [
   { label: 'Inter', value: '"Inter"', description: 'Clean humanist sans-serif (default)' },
-  { label: 'Monaspace Neon', value: '"Monaspace Neon"', description: 'Neo-grotesque mono — GitHub' },
-  { label: 'Monaspace Argon', value: '"Monaspace Argon"', description: 'Humanist mono — GitHub' },
-  { label: 'Monaspace Xenon', value: '"Monaspace Xenon"', description: 'Slab serif mono — GitHub' },
-  { label: 'Monaspace Radon', value: '"Monaspace Radon"', description: 'Handwriting mono — GitHub' },
-  { label: 'Monaspace Krypton', value: '"Monaspace Krypton"', description: 'Mechanical mono — GitHub' },
+  { label: 'Monaspace Neon', value: '"Monaspace Neon"', description: 'Neo-grotesque mono - GitHub' },
+  { label: 'Monaspace Argon', value: '"Monaspace Argon"', description: 'Humanist mono - GitHub' },
+  { label: 'Monaspace Xenon', value: '"Monaspace Xenon"', description: 'Slab serif mono - GitHub' },
+  { label: 'Monaspace Radon', value: '"Monaspace Radon"', description: 'Handwriting mono - GitHub' },
+  { label: 'Monaspace Krypton', value: '"Monaspace Krypton"', description: 'Mechanical mono - GitHub' },
   { label: 'JetBrains Mono', value: '"JetBrains Mono"', description: 'Developer favourite from JetBrains' },
   { label: 'Fira Code', value: '"Fira Code"', description: 'Mozilla\'s coding font with ligatures' },
   { label: 'System UI', value: 'system-ui', description: 'Your OS default font' },

@@ -7,7 +7,11 @@ If you want to contribute or have any issues, please let us know!
 
 ## Overview
 
-CodeMeet is a social network built for coders. Create a profile, describe your tech stack, and let the recommendation engine find people worth knowing — then chat with them in real time.
+CodeMeet is a social network built for coders. Create a profile, describe your tech stack, and let the recommendation engine find people worth knowing - then chat with them in real time.
+
+## GraphQL API
+
+This project exposes a GraphQL API alongside the REST API. The GraphQL documentation and quick-start (queries, subscriptions, playground info) is in `web/README_GRAPHQL.md` - see that file for GraphQL-specific usage and examples.
 
 **Key capabilities:**
 - Secure JWT + bcrypt authentication
@@ -15,17 +19,17 @@ CodeMeet is a social network built for coders. Create a profile, describe your t
 - Intelligent weighted recommendation algorithm
 - Connection requests & contact management
 - Real-time STOMP/WebSocket chat with file attachments
-- Extensive UI customisation — themes, fonts, backgrounds
+- Extensive UI customisation - themes, fonts, backgrounds
 
 ---
 
 ## Features
 
 ### Authentication & Profiles
-- **Register & Login** — JWT-based auth with bcrypt-hashed passwords. Logout accessible from every authenticated page.
-- **Bio** — Seven data points: primary language, experience level, looking for, preferred OS, coding style, GPS location + match radius, and age. All editable at any time.
-- **About Me** — Free-text field up to 1 000 characters.
-- **Profile Picture** — Upload, replace, or remove your avatar. Stored at `~/.codemeet/uploads/` and survives container rebuilds.
+- **Register & Login** - JWT-based auth with bcrypt-hashed passwords. Logout accessible from every authenticated page.
+- **Bio** - Seven data points: primary language, experience level, looking for, preferred OS, coding style, GPS location + match radius, and age. All editable at any time.
+- **About Me** - Free-text field up to 1 000 characters.
+- **Profile Picture** - Upload, replace, or remove your avatar. Stored at `~/.codemeet/uploads/` and survives container rebuilds.
 
 ### Recommendation Engine
 Weighted scoring across bio fields returns up to 10 matches, strongest first. Profiles below the minimum threshold are discarded.
@@ -43,21 +47,21 @@ Weighted scoring across bio fields returns up to 10 matches, strongest first. Pr
 You can skip a profile for 7 days, undo a skip, and view your full skip list.
 
 ### Connections & Chat
-- **Connections** — Send, accept, or reject requests; disconnect at any time. Real-time WebSocket notifications for incoming requests.
-- **Chat** — Full STOMP messaging with paginated history, file/image attachments, read receipts (✓ / ✓✓), typing indicators, in-conversation search, and an unread-message badge.
-- **Profile Visibility** — Profiles return 404 to anyone who is not a recommendation, pending connection, or existing contact. Emails are never exposed.
+- **Connections** - Send, accept, or reject requests; disconnect at any time. Real-time WebSocket notifications for incoming requests.
+- **Chat** - Full STOMP messaging with paginated history, file/image attachments, read receipts (✓ / ✓✓), typing indicators, in-conversation search, and an unread-message badge.
+- **Profile Visibility** - Profiles return 404 to anyone who is not a recommendation, pending connection, or existing contact. Emails are never exposed.
 
 ### Real-time Presence
-- **Online indicator** — Green/grey dot on every avatar.
-- **Last seen** — Timestamps updated on WebSocket disconnect.
-- **Typing indicator** — Animated "typing…" dots with debounce, via a dedicated STOMP topic.
-- **Notification Bell** — Aggregated count of pending requests and unread messages.
+- **Online indicator** - Green/grey dot on every avatar.
+- **Last seen** - Timestamps updated on WebSocket disconnect.
+- **Typing indicator** - Animated "typing…" dots with debounce, via a dedicated STOMP topic.
+- **Notification Bell** - Aggregated count of pending requests and unread messages.
 
 ### UI Customisation
-- **Themes** — Default, GitHub Dark, VS Code Dark+, Dracula, and a fully custom theme derived from three user-picked hex colours via HSL manipulation. Applied before first paint to prevent flash.
-- **Fonts** — Nine presets: Inter (default), five self-hosted Monaspace variants (Argon, Krypton, Neon, Radon, Xenon), JetBrains Mono, Fira Code, System UI.
-- **Backgrounds** — Five CSS pattern presets (Dot Matrix, Grid Lines, Crosshatch, Gradient Mesh, None) plus a custom image upload stored as a data-URL.
-- **Privacy Controls** — Toggle visibility for avatar, GPS radius, age, and last-seen status.
+- **Themes** - Default, GitHub Dark, VS Code Dark+, Dracula, and a fully custom theme derived from three user-picked hex colours via HSL manipulation. Applied before first paint to prevent flash.
+- **Fonts** - Nine presets: Inter (default), five self-hosted Monaspace variants (Argon, Krypton, Neon, Radon, Xenon), JetBrains Mono, Fira Code, System UI.
+- **Backgrounds** - Five CSS pattern presets (Dot Matrix, Grid Lines, Crosshatch, Gradient Mesh, None) plus a custom image upload stored as a data-URL.
+- **Privacy Controls** - Toggle visibility for avatar, GPS radius, age, and last-seen status.
 
 ### Responsive Design
 Desktop sidebar navigation collapses to a mobile bottom nav bar. The chat view switches between a conversation list and a single conversation on small screens. All grids use Tailwind responsive breakpoints.
@@ -72,12 +76,12 @@ Desktop sidebar navigation collapses to a mobile bottom nav bar. The chat view s
 |---|---|
 | Java | 21 |
 | Spring Boot | 4.0.3 |
-| Spring Security | — |
-| Spring WebSocket | — |
-| PostgreSQL + PostGIS | — |
+| Spring Security | - |
+| Spring WebSocket | - |
+| PostgreSQL + PostGIS | - |
 | JJWT | 0.12.5 |
-| Lombok | — |
-| Maven (wrapper included) | — |
+| Lombok | - |
+| Maven (wrapper included) | - |
 
 ### Frontend
 
@@ -96,7 +100,7 @@ Desktop sidebar navigation collapses to a mobile bottom nav bar. The chat view s
 
 ## Getting Started
 
-### Step 0 — Install Docker
+### Step 0 - Install Docker
 
 Docker Desktop bundles the Docker Engine, CLI, and Compose plugin in a single installer. Choose your OS:
 
@@ -125,7 +129,7 @@ Docker Desktop bundles the Docker Engine, CLI, and Compose plugin in a single in
 > **macOS requirement:** Docker Desktop 4.42+ requires macOS Ventura 13.3 or later.
 
 #### Linux (Ubuntu / Debian)
-On Linux, Docker Desktop is optional. The recommended approach is to install **Docker Engine** directly — Compose is included as a plugin:
+On Linux, Docker Desktop is optional. The recommended approach is to install **Docker Engine** directly - Compose is included as a plugin:
 
 ```bash
 # Remove any old versions
@@ -163,7 +167,7 @@ docker compose version
 
 ---
 
-### Step 1 — Run CodeMeet
+### Step 1 - Run CodeMeet
 
 All you need is **Docker** (installed above).
 
@@ -175,24 +179,24 @@ docker compose up -d
 > Docker Compose is included in Docker Desktop and in Docker Engine v2+. No separate install needed.
 
 That single command will:
-1. Build the frontend (Node 20-Alpine) — install deps and run `npm run build`.
-2. Build the backend (Maven 3.9 + Temurin 21) — compile, copy the frontend into Spring's `static/` resources, and package the fat JAR.
+1. Build the frontend (Node 20-Alpine) - install deps and run `npm run build`.
+2. Build the backend (Maven 3.9 + Temurin 21) - compile, copy the frontend into Spring's `static/` resources, and package the fat JAR.
 3. Produce a minimal runtime image (Temurin 21 JRE-Alpine).
 4. Start PostgreSQL 16 + PostGIS with a health-check, creating the database automatically.
 5. Start the app at **http://localhost:8080** once Postgres is healthy.
 
-### Step 2 (optional) — Developer Mode
+### Step 2 (optional) - Developer Mode
 
 If you prefer to run services individually:
 
 #### Prerequisites
-- **Java JDK 21** — [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=21) or `sudo apt install openjdk-21-jdk`
-- **Node.js 18+** — [nodejs.org](https://nodejs.org/) or via NVM
-- **PostgreSQL + PostGIS** — [postgresql.org](https://www.postgresql.org/download/) or `sudo apt install postgresql postgresql-contrib postgis`
+- **Java JDK 21** - [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=21) or `sudo apt install openjdk-21-jdk`
+- **Node.js 18+** - [nodejs.org](https://nodejs.org/) or via NVM
+- **PostgreSQL + PostGIS** - [postgresql.org](https://www.postgresql.org/download/) or `sudo apt install postgresql postgresql-contrib postgis`
 
 #### 1. Configure environment variables
 
-Both `.env` files are **optional** — the project has sensible defaults built in. The one exception is dev mode, where the backend needs to reach the database on `localhost` instead of the Docker network.
+Both `.env` files are **optional** - the project has sensible defaults built in. The one exception is dev mode, where the backend needs to reach the database on `localhost` instead of the Docker network.
 
 Create `./web/.env` with just this one line:
 ```env
@@ -228,7 +232,7 @@ npm install
 npm run dev                   # http://localhost:5173
 ```
 
-> In production (Docker), the frontend is served by Spring Boot — only one URL needed.
+> In production (Docker), the frontend is served by Spring Boot - only one URL needed.
 
 ### Useful Commands
 
@@ -268,7 +272,7 @@ npm run dev:init-admin     # create an admin account
 npm run dev:drop-db        # wipe the database
 ```
 
-Both Docker and local setups use the same defaults — `codemeet_db` / `postgres` / `54321` — so switching between them is seamless.
+Both Docker and local setups use the same defaults - `codemeet_db` / `postgres` / `54321` - so switching between them is seamless.
 
 ---
 
@@ -277,7 +281,7 @@ Both Docker and local setups use the same defaults — `codemeet_db` / `postgres
 1. Open `http://localhost:8080` (or `http://localhost:5173` in dev mode).
 2. Register a new account.
 3. Complete the Bio onboarding (GPS location, match radius, age, tech stack, About Me).
-4. Browse recommendations on **Matches** — connect or dismiss.
+4. Browse recommendations on **Matches** - connect or dismiss.
 5. Manage incoming and outgoing requests on **Connections**.
 6. Chat in real time with connected users (text + file attachments).
 7. Customise your experience in **Settings** (theme, font, background, privacy).
