@@ -9,6 +9,7 @@ import com.codemeet.backend.repository.UserRepository;
 import com.codemeet.backend.repository.ConnectionRepository;
 import com.codemeet.backend.service.RecommendationService;
 import com.codemeet.backend.service.PresenceService;
+import com.codemeet.backend.service.ProfileVisibilityService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
@@ -32,36 +33,46 @@ public class GraphqlController {
     private final RecommendationService recommendationService;
     private final ConnectionRepository connectionRepository;
     private final PresenceService presenceService;
+    private final ProfileVisibilityService visibility;
 
-    public GraphqlController(UserRepository userRepository, BioRepository bioRepository, ProfileRepository profileRepository, RecommendationService recommendationService, ConnectionRepository connectionRepository, PresenceService presenceService) {
+    public GraphqlController(UserRepository userRepository, BioRepository bioRepository, ProfileRepository profileRepository, RecommendationService recommendationService, ConnectionRepository connectionRepository, PresenceService presenceService, ProfileVisibilityService visibility) {
         this.userRepository = userRepository;
         this.bioRepository = bioRepository;
         this.profileRepository = profileRepository;
         this.recommendationService = recommendationService;
         this.connectionRepository = connectionRepository;
         this.presenceService = presenceService;
+        this.visibility = visibility;
     }
 
     @QueryMapping
     public User user(@Argument UUID id) {
-        return userRepository.findById(id).orElse(null);
+        return userRepository.findById(id).filter(this::visible).orElse(null);
     }
 
     @QueryMapping
     public Bio bio(@Argument UUID id) {
-        return bioRepository.findById(id).orElse(null);
+        return bioRepository.findById(id).filter(bio -> visible(bio.getUser())).orElse(null);
     }
 
     @QueryMapping
     public Profile profile(@Argument UUID id) {
-        return profileRepository.findById(id).orElse(null);
+        return profileRepository.findById(id).filter(profile -> visible(profile.getUser())).orElse(null);
     }
 
     private Optional<User> currentUser() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getPrincipal() == null) return Optional.empty();
+        if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) return Optional.empty();
         String email = auth.getName();
         return userRepository.findByEmail(email);
+    }
+
+    private boolean visible(User target) {
+        return currentUser().map(viewer -> visibility.canViewProfile(viewer, target)).orElse(false);
+    }
+
+    private boolean privateFieldsVisible(User target) {
+        return currentUser().map(viewer -> visibility.canBypassPrivacy(viewer, target)).orElse(false);
     }
 
     @QueryMapping
@@ -84,7 +95,7 @@ public class GraphqlController {
         Optional<User> current = currentUser();
         if (current.isEmpty()) return List.of();
         List<UUID> ids = recommendationService.getRecommendationsForUser(current.get(), 20);
-        return userRepository.findAllById(ids);
+        return userRepository.findAllById(ids).stream().filter(this::visible).toList();
     }
 
     @QueryMapping
@@ -95,12 +106,23 @@ public class GraphqlController {
         return connectionRepository.findAllForUser(current.get()).stream()
                 .filter(c -> c.getStatus() != null && c.getStatus().name().equals("ACCEPTED"))
                 .map(c -> c.getRequester().getId().equals(current.get().getId()) ? c.getRecipient() : c.getRequester())
+                .filter(this::visible)
                 .collect(Collectors.toList());
     }
 
     @SubscriptionMapping
     public Flux<PresenceService.PresenceChange> presenceChanged() {
-        return presenceService.presenceFlux();
+        Optional<User> viewer = currentUser();
+        if (viewer.isEmpty()) return Flux.empty();
+        return presenceService.presenceFlux().filter(change -> {
+            if (!change.hasUser()) return false;
+            try {
+                return userRepository.findById(UUID.fromString(change.userId()))
+                        .filter(target -> visibility.canViewProfile(viewer.get(), target)).isPresent();
+            } catch (IllegalArgumentException error) {
+                return false;
+            }
+        });
     }
 
     // Batch mappings to avoid multiple queries when resolving nested bio/profile for many users
@@ -111,7 +133,7 @@ public class GraphqlController {
         java.util.Map<java.util.UUID, Bio> byUserId = bios.stream().collect(Collectors.toMap(b -> b.getUser().getId(), b -> b));
         java.util.Map<User, Bio> result = new java.util.HashMap<>();
         for (User u : users) {
-            result.put(u, byUserId.get(u.getId()));
+            result.put(u, visible(u) ? byUserId.get(u.getId()) : null);
         }
         return result;
     }
@@ -124,18 +146,52 @@ public class GraphqlController {
         java.util.Map<java.util.UUID, Profile> byUserId = profiles.stream().collect(Collectors.toMap(p -> p.getUser().getId(), p -> p));
         java.util.Map<User, Profile> result = new java.util.HashMap<>();
         for (User u : users) {
-            result.put(u, byUserId.get(u.getId()));
+            result.put(u, visible(u) ? byUserId.get(u.getId()) : null);
         }
         return result;
     }
 
     @SchemaMapping(typeName = "Bio", field = "user")
     public User bioUser(Bio bio) {
-        return bio.getUser();
+        return visible(bio.getUser()) ? bio.getUser() : null;
     }
 
     @SchemaMapping(typeName = "Profile", field = "user")
     public User profileUser(Profile profile) {
-        return profile.getUser();
+        return visible(profile.getUser()) ? profile.getUser() : null;
+    }
+
+    @SchemaMapping(typeName = "User", field = "profilePicture")
+    public String profilePicture(User user) {
+        return visible(user) && (privateFieldsVisible(user) || !user.isHideAvatar())
+                ? user.getProfilePicture() : null;
+    }
+
+    @SchemaMapping(typeName = "Bio", field = "city")
+    public String city(Bio bio) {
+        return visible(bio.getUser()) && (privateFieldsVisible(bio.getUser()) || !bio.getUser().isHideLocation())
+                ? bio.getCity() : null;
+    }
+
+    @SchemaMapping(typeName = "Bio", field = "maxDistanceKm")
+    public Integer maxDistanceKm(Bio bio) {
+        return visible(bio.getUser()) && (privateFieldsVisible(bio.getUser()) || !bio.getUser().isHideLocation())
+                ? bio.getMaxDistanceKm() : null;
+    }
+
+    @SchemaMapping(typeName = "Bio", field = "age")
+    public Integer age(Bio bio) {
+        return visible(bio.getUser()) && (privateFieldsVisible(bio.getUser()) || !bio.getUser().isHideAge())
+                ? bio.getAge() : null;
+    }
+
+    @SchemaMapping(typeName = "Bio", field = "latitude")
+    public Double latitude(Bio bio) {
+        return privateFieldsVisible(bio.getUser()) ? bio.getLatitude() : null;
+    }
+
+    @SchemaMapping(typeName = "Bio", field = "longitude")
+    public Double longitude(Bio bio) {
+        return privateFieldsVisible(bio.getUser()) ? bio.getLongitude() : null;
     }
 }

@@ -16,6 +16,7 @@ import com.codemeet.backend.repository.ProfileRepository;
 import com.codemeet.backend.repository.UserRepository;
 import com.codemeet.backend.service.FileService;
 import com.codemeet.backend.service.RecommendationService;
+import com.codemeet.backend.service.ProfileVisibilityService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -42,14 +43,16 @@ public class UserController {
     private final FileService fileService;
     private final ConnectionRepository connectionRepository;
     private final RecommendationService recommendationService;
+    private final ProfileVisibilityService visibility;
 
-    public UserController(UserRepository userRepository, ProfileRepository profileRepository, BioRepository bioRepository, FileService fileService, ConnectionRepository connectionRepository, RecommendationService recommendationService) {
+    public UserController(UserRepository userRepository, ProfileRepository profileRepository, BioRepository bioRepository, FileService fileService, ConnectionRepository connectionRepository, RecommendationService recommendationService, ProfileVisibilityService visibility) {
         this.userRepository = userRepository;
         this.profileRepository = profileRepository;
         this.bioRepository = bioRepository;
         this.fileService = fileService;
         this.connectionRepository = connectionRepository;
         this.recommendationService = recommendationService;
+        this.visibility = visibility;
     }
 
     @GetMapping("/me")
@@ -327,24 +330,7 @@ public class UserController {
     }
 
     private boolean canViewProfile(User current, User target) {
-        if (current.getRole() == User.Role.ADMIN) {
-            return true;
-        }
-
-        if (current.getId().equals(target.getId())) {
-            return true;
-        }
-
-        if (recommendationService.isBlockedEitherDirection(current, target)) {
-            return false;
-        }
-
-        Optional<Connection> connection = connectionRepository.findAllConnectionsBetweenUsers(current, target);
-        if (connection.isPresent()) {
-            return connection.get().getStatus() != ConnectionStatus.REJECTED;
-        }
-
-        return recommendationService.getRecommendationsForUser(current, 50).contains(target.getId());
+        return visibility.canViewProfile(current, target);
     }
 
     private UserResponse mapToResponse(User user) {
@@ -367,7 +353,7 @@ public class UserController {
     }
 
     private boolean canBypassPrivacy(User viewer, User target) {
-        return viewer.getRole() == User.Role.ADMIN || viewer.getId().equals(target.getId());
+        return visibility.canBypassPrivacy(viewer, target);
     }
 
     private String resolveDisplayName(User user) {

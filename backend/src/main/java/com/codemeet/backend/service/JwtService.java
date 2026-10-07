@@ -7,18 +7,43 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.Locale;
 
 @Service
 public class JwtService {
     
-    @Value("${jwt.secret}")
-    private String secretKeyString;
+    private final SecretKey signingKey;
+    private final long expirationTime;
 
-    @Value("${jwt.expiration}")
-    private long expirationTime;
+    public JwtService(@Value("${jwt.secret:}") String secret,
+                      @Value("${jwt.expiration:86400000}") long expirationTime) {
+        if (secret == null || secret.isBlank() || secret.getBytes(StandardCharsets.UTF_8).length < 32
+                || secret.toLowerCase(Locale.ROOT).contains("change-me")
+                || secret.toLowerCase(Locale.ROOT).contains("your-secret")
+                || isPublishedExample(secret)) {
+            throw new IllegalArgumentException("JWT_SECRET must be a private random key of at least 32 bytes.");
+        }
+        if (expirationTime <= 0) throw new IllegalArgumentException("JWT_EXPIRATION must be positive.");
+        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.expirationTime = expirationTime;
+    }
+
+    private static boolean isPublishedExample(String secret) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(secret.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest)
+                    .equals("0ccab780642d77b0eb75f1f98e4f5f22944efae510142230a0c1cd88c77f52d4");
+        } catch (NoSuchAlgorithmException error) {
+            throw new IllegalStateException("SHA-256 is unavailable", error);
+        }
+    }
 
     private SecretKey getSignInKey() {
-        return Keys.hmacShaKeyFor(secretKeyString.getBytes());
+        return signingKey;
     }
 
     private <T> T extractClaim(String token, java.util.function.Function<io.jsonwebtoken.Claims, T> claimsResolver) {

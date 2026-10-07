@@ -11,6 +11,15 @@ CodeMeet is a social network built for coders. Create a profile, describe your t
 
 ## GraphQL API
 
+GraphQL uses the same sign-in and profile visibility rules as the REST API. Hidden age,
+location, and avatar fields stay hidden from other users. Exact coordinates are available
+only to the account owner and administrators.
+
+Set `JWT_SECRET` to a private random value before starting the backend. For example,
+generate a value locally with `openssl rand -base64 48` and place it in your ignored
+`.env` file. The backend refuses missing, short, placeholder, and retired example keys.
+Changing the key invalidates existing sign-in tokens. Never commit the generated value.
+
 This project exposes a GraphQL API alongside the REST API. The GraphQL documentation and quick-start (queries, subscriptions, playground info) is in `web/README_GRAPHQL.md` - see that file for GraphQL-specific usage and examples.
 
 **Key capabilities:**
