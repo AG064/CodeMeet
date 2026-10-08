@@ -200,17 +200,15 @@ If you prefer to run services individually:
 
 #### Prerequisites
 - **Java JDK 21** - [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=21) or `sudo apt install openjdk-21-jdk`
-- **Node.js 18+** - [nodejs.org](https://nodejs.org/) or via NVM
+- **Node.js 22.18+** for frontend tooling - [nodejs.org](https://nodejs.org/) or via NVM
+- **Python 3** for the optional database helpers. Install their dependency with `python -m pip install -r scripts/requirements.txt`.
 - **PostgreSQL + PostGIS** - [postgresql.org](https://www.postgresql.org/download/) or `sudo apt install postgresql postgresql-contrib postgis`
 
 #### 1. Configure environment variables
 
-Both `.env` files are **optional** - the project has sensible defaults built in. The one exception is dev mode, where the backend needs to reach the database on `localhost` instead of the Docker network.
+Both modes require a private `POSTGRES_PASSWORD` and `JWT_SECRET`. Copy `.env.example` to the repository-root `.env` and fill those values, or provide them through the process environment. Run `openssl rand -base64 48` separately for each value. The environment file is optional when the required variables are supplied directly.
 
-Create `./web/.env` with just this one line:
-```env
-DATASOURCE_URL=jdbc:postgresql://localhost:5432/codemeet_db
-```
+The standalone backend defaults to PostgreSQL on loopback. Docker Compose supplies its internal database hostname. Leave `DATASOURCE_URL` unset for those defaults; set it only when using a different database endpoint.
 
 Optionally, create `frontend/.env` if you want to override the API URLs:
 ```env
@@ -281,7 +279,9 @@ npm run dev:init-admin     # create an admin account
 npm run dev:drop-db        # wipe the database
 ```
 
-Both Docker and local setups use the same defaults - `codemeet_db` / `postgres` / `54321` - so switching between them is seamless.
+Both Docker and local setups default to database `codemeet_db` and user `postgres`. Set `POSTGRES_PASSWORD` to a unique private value before starting either setup. There is no password fallback. Generate a value with `openssl rand -base64 32` and keep it in your ignored environment file. PostgreSQL and Adminer publish on loopback; the application remains available on port 8080. Existing database volumes retain their initialized credentials, so changing this setting does not rotate an existing database password.
+
+Profile uploads accept PNG, JPEG and GIF images up to 5 MiB and 16 megapixels, and re-encode them as PNG. Chat attachments preserve their bytes; unsupported or active document types download as binary attachments. Existing HTML and SVG uploads also download instead of executing on the application origin.
 
 ---
 

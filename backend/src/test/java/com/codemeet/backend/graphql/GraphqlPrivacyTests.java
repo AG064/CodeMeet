@@ -116,8 +116,8 @@ class GraphqlPrivacyTests extends IsolatedBackendTest {
         StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
         accessor.setNativeHeader("Authorization", "Bearer " + forged);
         accessor.setLeaveMutable(true);
-        websocketAuth.preSend(MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders()), null);
-        assertNull(accessor.getUser());
+        org.junit.jupiter.api.Assertions.assertThrows(org.springframework.security.authentication.BadCredentialsException.class,
+                () -> websocketAuth.preSend(MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders()), null));
     }
 
     @Test

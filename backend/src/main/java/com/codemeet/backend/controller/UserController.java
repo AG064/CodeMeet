@@ -212,7 +212,7 @@ public class UserController {
         String previousFileUrl = user.getProfilePicture();
 
         try {
-            String fileUrl = fileService.saveFile(file);
+            String fileUrl = fileService.saveProfileImage(file);
             user.setProfilePicture(fileUrl);
             userRepository.save(user);
             fileService.deleteFileByUrl(previousFileUrl);

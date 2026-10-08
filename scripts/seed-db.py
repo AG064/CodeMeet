@@ -8,7 +8,7 @@ from pathlib import Path
 
 # --- LOAD ENVIRONMENT VARIABLES ---
 # Try to find .env in backend/ (works if script is in root OR in /scripts)
-env_path = Path(__file__).resolve().parent / 'backend' / '.env'
+env_path = Path(__file__).resolve().parent.parent / '.env'
 if not env_path.exists():
     env_path = Path(__file__).resolve().parent.parent / 'backend' / '.env'
 
@@ -26,7 +26,9 @@ NETWORK_HOST = os.getenv("DB_NETWORK_HOST", "database")
 
 DB_NAME = "codemeet_db"
 DB_USER = os.getenv("POSTGRES_USER", "postgres")
-DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "12345")
+DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+if not DB_PASSWORD or not DB_PASSWORD.strip():
+    raise RuntimeError("Set a private POSTGRES_PASSWORD before running database tools")
 
 # --- MOCK DATA POOLS ---
 LANGUAGES = ["Java", "Python", "TypeScript", "Go", "Rust", "C#", "C++", "JavaScript", "Kotlin"]

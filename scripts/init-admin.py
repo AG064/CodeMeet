@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 # --- LOAD ENVIRONMENT VARIABLES ---
-env_path = Path(__file__).resolve().parent / 'backend' / '.env'
+env_path = Path(__file__).resolve().parent.parent / '.env'
 if not env_path.exists():
     env_path = Path(__file__).resolve().parent.parent / 'backend' / '.env'
 
@@ -19,7 +19,9 @@ CONTAINER_NAME = os.getenv("DB_CONTAINER_NAME", "web-database-1")
 NETWORK_HOST = os.getenv("DB_NETWORK_HOST", "database")
 DB_NAME = "codemeet_db"
 DB_USER = os.getenv("POSTGRES_USER", "postgres")
-DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "12345")
+DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+if not DB_PASSWORD or not DB_PASSWORD.strip():
+    raise RuntimeError("Set a private POSTGRES_PASSWORD before running database tools")
 
 ADMIN_EMAIL = "admin@test.com"
 ADMIN_NAME = "Admin"
