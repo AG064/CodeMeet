@@ -249,8 +249,8 @@ const Chat: React.FC = () => {
                         ? {
                               ...partner,
                               online: presenceEvent.online,
-                              lastSeenAt: presenceEvent.lastSeenAt ?? (presenceEvent.lastSeenVisible === false ? null : partner.lastSeenAt),
-                              lastSeenVisible: presenceEvent.lastSeenVisible !== false,
+                              lastSeenAt: (presenceEvent.lastSeenVisible ?? partner.lastSeenVisible) === false ? null : (presenceEvent.lastSeenAt ?? partner.lastSeenAt),
+                              lastSeenVisible: presenceEvent.lastSeenVisible ?? partner.lastSeenVisible,
                            }
                         : partner,
                   ),

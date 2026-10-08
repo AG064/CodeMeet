@@ -10,5 +10,5 @@ import java.util.UUID;
 public class RecommendationDto {
     private UUID id;
     private int matchScore;
-    private double distanceKm;
+    private Double distanceKm;
 }

@@ -4,6 +4,8 @@ import com.codemeet.backend.dto.RecommendationDto;
 import com.codemeet.backend.model.User;
 import com.codemeet.backend.repository.UserRepository;
 import com.codemeet.backend.service.RecommendationService;
+import com.codemeet.backend.service.PrivacyFields;
+import com.codemeet.backend.service.ProfileVisibilityService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,10 +28,12 @@ import java.util.stream.Collectors;
 public class RecommendationController {
     private final RecommendationService recommendationService;
     private final UserRepository userRepository;
+    private final ProfileVisibilityService visibility;
 
-    public RecommendationController(RecommendationService recommendationService, UserRepository userRepository) {
+    public RecommendationController(RecommendationService recommendationService, UserRepository userRepository, ProfileVisibilityService visibility) {
         this.recommendationService = recommendationService;
         this.userRepository = userRepository;
+        this.visibility = visibility;
     }
 
     @GetMapping("/recommendations")
@@ -58,7 +62,11 @@ public class RecommendationController {
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recommendation not found"));
 
-        return ResponseEntity.ok(new RecommendationDto(match.userId(), match.matchScore(), match.distanceKm()));
+        User target = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recommendation not found"));
+        Double distance = PrivacyFields.locationVisible(target, visibility.canBypassPrivacy(currentUser, target))
+                ? match.distanceKm() : null;
+        return ResponseEntity.ok(new RecommendationDto(match.userId(), match.matchScore(), distance));
     }
 
     @PostMapping("/recommendations/skip/{userId}")

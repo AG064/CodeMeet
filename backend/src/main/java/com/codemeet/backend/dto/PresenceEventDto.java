@@ -12,4 +12,5 @@ public class PresenceEventDto {
     private UUID userId;
     private boolean online;
     private Instant lastSeenAt;
+    private boolean lastSeenVisible;
 }

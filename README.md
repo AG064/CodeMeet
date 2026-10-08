@@ -1,5 +1,7 @@
 # CodeMeet
 
+Recommendation score responses omit precise distance when the target hides location, following the existing self/admin profile exception. Matching, ranking and integer scores still use location internally and can convey coarse proximity. Presence updates preserve live online status while omitting hidden last-seen timestamps and carrying an explicit visibility flag.
+
 > A full-stack platform that connects developers, programmers, and hobbyists based on their programming languages, interests, and personal characteristics.
 
 If you want to contribute or have any issues, please let us know!
