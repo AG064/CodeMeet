@@ -249,8 +249,8 @@ const Chat: React.FC = () => {
                         ? {
                               ...partner,
                               online: presenceEvent.online,
-                              lastSeenAt: presenceEvent.lastSeenAt ?? (presenceEvent.lastSeenVisible === false ? null : partner.lastSeenAt),
-                              lastSeenVisible: presenceEvent.lastSeenVisible !== false,
+                              lastSeenAt: (presenceEvent.lastSeenVisible ?? partner.lastSeenVisible) === false ? null : (presenceEvent.lastSeenAt ?? partner.lastSeenAt),
+                              lastSeenVisible: presenceEvent.lastSeenVisible ?? partner.lastSeenVisible,
                            }
                         : partner,
                   ),
@@ -864,7 +864,7 @@ const Chat: React.FC = () => {
                                          ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-sm border-indigo-500/20'
                                          : 'bg-zinc-800/80 text-zinc-100 rounded-2xl rounded-tl-sm border-white/5'
                                    } transition-all hover:shadow-lg`}>
-                                      {m.attachmentUrl && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(m.attachmentUrl) ? (
+                                      {m.attachmentUrl && /\.(jpg|jpeg|png|gif)$/i.test(m.attachmentUrl) ? (
                                          <a href={`${BACKEND_BASE_URL}${m.attachmentUrl}`} target="_blank" rel="noopener noreferrer">
                                             <img
                                                src={`${BACKEND_BASE_URL}${m.attachmentUrl}`}

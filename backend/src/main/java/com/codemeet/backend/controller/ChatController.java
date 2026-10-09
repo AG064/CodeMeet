@@ -13,6 +13,7 @@ import com.codemeet.backend.repository.UserRepository;
 import com.codemeet.backend.service.FileService;
 import com.codemeet.backend.service.PresenceService;
 import com.codemeet.backend.service.RecommendationService;
+import com.codemeet.backend.service.PrivacyFields;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -283,10 +284,10 @@ public class ChatController {
                     ? connection.getRecipient()
                     : connection.getRequester();
             if (!recommendationService.isBlockedEitherDirection(currentUser, peer)) {
-                boolean lastSeenVisible = !peer.isHideLastSeen();
+                boolean lastSeenVisible = PrivacyFields.lastSeenVisible(peer, false);
                 response.put(
                         peer.getId().toString(),
-                        new PresenceStatusDto(presenceService.isOnline(peer.getId()), lastSeenVisible ? peer.getLastSeenAt() : null, lastSeenVisible)
+                        new PresenceStatusDto(presenceService.isOnline(peer.getId()), PrivacyFields.lastSeen(peer, false), lastSeenVisible)
                 );
             }
         }

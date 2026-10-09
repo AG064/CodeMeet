@@ -7,6 +7,7 @@ import com.codemeet.backend.model.User;
 import com.codemeet.backend.repository.ConnectionRepository;
 import com.codemeet.backend.repository.UserRepository;
 import com.codemeet.backend.service.PresenceService;
+import com.codemeet.backend.service.PrivacyFields;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -80,7 +81,8 @@ public class WebSocketPresenceEventListener {
             }
 
             List<Connection> connections = connectionRepository.findByUserAndStatus(sourceUser, ConnectionStatus.ACCEPTED);
-            PresenceEventDto event = new PresenceEventDto(sourceUser.getId(), online, sourceUser.getLastSeenAt());
+            PresenceEventDto event = new PresenceEventDto(sourceUser.getId(), online,
+                    PrivacyFields.lastSeen(sourceUser, false), PrivacyFields.lastSeenVisible(sourceUser, false));
 
             for (Connection connection : connections) {
                 User peer = connection.getRequester().getId().equals(sourceUser.getId())

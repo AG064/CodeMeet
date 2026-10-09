@@ -3,13 +3,13 @@ services:
     image: "postgis/postgis:16-3.4-alpine"
     restart: always
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     env_file:
       - path: ./.env
         required: false
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-12345}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a private POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-codemeet_db}
     volumes:
       - db_data:/var/lib/postgresql/data/
@@ -33,14 +33,14 @@ services:
     environment:
       DATASOURCE_URL: ${DATASOURCE_URL:-jdbc:postgresql://database:5432/codemeet_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-12345}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a private POSTGRES_PASSWORD}
 
   adminer:
     image: adminer:latest
     container_name: adminer
     restart: always
     ports:
-      - 7777:8080
+      - "127.0.0.1:7777:8080"
 
 volumes:
   db_data:

@@ -8,11 +8,16 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.access.AccessDeniedException;
+import java.util.Set;
 
 @Component
 public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
 
     private final JwtService jwtService;
+    private static final Set<String> SEND_DESTINATIONS = Set.of("/app/chat", "/app/chat/typing");
+    private static final Set<String> SUBSCRIPTIONS = Set.of("/user/queue/messages", "/user/queue/typing", "/user/queue/presence", "/user/queue/notifications");
 
     public WebSocketAuthChannelInterceptor(JwtService jwtService) {
         this.jwtService = jwtService;
@@ -26,7 +31,7 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         }
 
         // We only need to authenticate the initial CONNECT frame; later messages reuse that user principal.
-        if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+        if (StompCommand.CONNECT.equals(accessor.getCommand()) || StompCommand.STOMP.equals(accessor.getCommand())) {
             String authHeader = accessor.getFirstNativeHeader("Authorization");
             if (authHeader == null) {
                 authHeader = accessor.getFirstNativeHeader("authorization");
@@ -42,7 +47,21 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
                         }
                     }
                 } catch (Exception e) {
+                    throw new BadCredentialsException("Invalid WebSocket credentials");
                 }
+            }
+            if (accessor.getUser() == null) {
+                throw new BadCredentialsException("WebSocket authentication required");
+            }
+        } else if (accessor.getCommand() != null) {
+            if (accessor.getUser() == null) {
+                throw new AccessDeniedException("Authenticated WebSocket session required");
+            }
+            if (StompCommand.SEND.equals(accessor.getCommand()) && (accessor.getDestination() == null || !SEND_DESTINATIONS.contains(accessor.getDestination()))) {
+                throw new AccessDeniedException("Client publication is restricted to chat handlers");
+            }
+            if (StompCommand.SUBSCRIBE.equals(accessor.getCommand()) && (accessor.getDestination() == null || !SUBSCRIPTIONS.contains(accessor.getDestination()))) {
+                throw new AccessDeniedException("Only private subscriptions are permitted");
             }
         }
 
